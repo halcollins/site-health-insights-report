@@ -3,45 +3,32 @@ import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import UrlAnalysisForm from "@/components/UrlAnalysisForm";
 import heroImage from "@/assets/hero-bg.jpg";
+import { analysisService } from "@/services/analysisService";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  // Mock analysis function - replace with actual API calls
   const performAnalysis = async (url: string) => {
     setIsAnalyzing(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Mock analysis result
-    const mockResult = {
-      url,
-      performanceScore: Math.floor(Math.random() * 40) + 60, // 60-100
-      isWordPress: Math.random() > 0.3, // 70% chance of being WordPress
-      wpVersion: "6.4.2",
-      theme: "Astra",
-      plugins: Math.floor(Math.random() * 20) + 5,
-      hasSSL: Math.random() > 0.2, // 80% have SSL
-      hasCDN: Math.random() > 0.5, // 50% have CDN
-      imageOptimization: ['good', 'needs-improvement', 'poor'][Math.floor(Math.random() * 3)] as any,
-      caching: ['enabled', 'partial', 'disabled'][Math.floor(Math.random() * 3)] as any,
-      mobileScore: Math.floor(Math.random() * 30) + 50, // 50-80
-      recommendations: [
-        "Optimize images by compressing and using modern formats like WebP",
-        "Enable caching to improve page load times",
-        "Update WordPress core and plugins to latest versions",
-        "Implement a Content Delivery Network (CDN)",
-        "Minify CSS, JavaScript, and HTML files",
-        "Use a performance-optimized hosting provider"
-      ].slice(0, Math.floor(Math.random() * 4) + 2)
-    };
-
-    // Store result and navigate
-    localStorage.setItem('analysisResult', JSON.stringify(mockResult));
-    setIsAnalyzing(false);
-    navigate('/analysis', { state: { result: mockResult } });
+    try {
+      const result = await analysisService.analyzeWebsite(url);
+      
+      // Store result and navigate
+      localStorage.setItem('analysisResult', JSON.stringify(result));
+      setIsAnalyzing(false);
+      navigate('/analysis', { state: { result } });
+    } catch (error) {
+      setIsAnalyzing(false);
+      toast({
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : "Unable to analyze website. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
