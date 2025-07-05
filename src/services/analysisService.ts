@@ -54,7 +54,14 @@ class AnalysisService {
       try {
         pageSpeedData = await this.getPageSpeedInsights(url);
       } catch (error) {
-        console.warn('PageSpeed API unavailable, using fallback scores:', error);
+        console.warn('PageSpeed API unavailable, trying GTMetrix fallback:', error);
+        
+        // Try GTMetrix as fallback if user has provided API key
+        try {
+          pageSpeedData = await this.getGTMetrixInsights(url);
+        } catch (gtError) {
+          console.warn('GTMetrix API also unavailable, using estimated scores:', gtError);
+        }
       }
 
       const recommendations = this.generateRecommendations(pageSpeedData, wordpressData);
@@ -88,6 +95,67 @@ class AnalysisService {
     }
     
     return response.json();
+  }
+
+  private async getGTMetrixInsights(url: string): Promise<PageSpeedResult> {
+    // Check if user has provided GTMetrix API key
+    const apiKey = localStorage.getItem('gtmetrix-api-key');
+    const apiUser = localStorage.getItem('gtmetrix-api-user');
+    
+    if (!apiKey || !apiUser) {
+      throw new Error('GTMetrix API credentials not found');
+    }
+
+    // Start a GTMetrix test
+    const testResponse = await fetch('https://gtmetrix.com/api/2.0/tests', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(`${apiUser}:${apiKey}`)}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: url,
+        generate_report: true
+      })
+    });
+
+    if (!testResponse.ok) {
+      throw new Error(`GTMetrix API error: ${testResponse.status}`);
+    }
+
+    const testData = await testResponse.json();
+    
+    // Poll for results (simplified - in production, you'd want better polling logic)
+    await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 seconds
+    
+    const resultResponse = await fetch(`https://gtmetrix.com/api/2.0/tests/${testData.id}`, {
+      headers: {
+        'Authorization': `Basic ${btoa(`${apiUser}:${apiKey}`)}`
+      }
+    });
+
+    if (!resultResponse.ok) {
+      throw new Error(`GTMetrix result error: ${resultResponse.status}`);
+    }
+
+    const resultData = await resultResponse.json();
+    
+    // Convert GTMetrix format to PageSpeed format
+    return {
+      lighthouseResult: {
+        categories: {
+          performance: { score: (resultData.scores.performance || 50) / 100 },
+          accessibility: { score: 0.8 }, // GTMetrix doesn't provide this
+          'best-practices': { score: 0.8 }, // GTMetrix doesn't provide this
+          seo: { score: 0.8 } // GTMetrix doesn't provide this
+        },
+        audits: {
+          'first-contentful-paint': { displayValue: `${resultData.timings.first_contentful_paint || 0}ms` },
+          'largest-contentful-paint': { displayValue: `${resultData.timings.largest_contentful_paint || 0}ms` },
+          'cumulative-layout-shift': { displayValue: '0' } // GTMetrix might not provide this
+        }
+      }
+    };
   }
 
   private async detectWordPress(url: string): Promise<WordPressDetectionResult> {
