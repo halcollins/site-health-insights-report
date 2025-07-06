@@ -443,107 +443,182 @@ serve(async (req) => {
     const imageOptimization = analyzeImageOptimization(html);
     const caching = analyzeCaching(headers);
 
-// Get actual PageSpeed Insights data
+    // Get actual PageSpeed Insights data with detailed logging
     let performanceScore = 75; // Fallback score
     let mobileScore = 65; // Fallback score
+    let usingRealData = false;
     
     // Get Google PageSpeed API key from Supabase secrets
     const GOOGLE_API_KEY = Deno.env.get('GOOGLE_SPEED_TEST_KEY');
+    console.log(`Google API Key present: ${GOOGLE_API_KEY ? 'YES' : 'NO'}`);
     
     if (GOOGLE_API_KEY) {
-      console.log(`Fetching PageSpeed data for ${normalizedUrl} with API key`);
+      console.log(`Starting PageSpeed analysis for ${normalizedUrl}`);
       
-      // Helper function to make PageSpeed API calls with retry logic
-      const fetchPageSpeedWithRetry = async (strategy: 'desktop' | 'mobile', maxRetries = 3): Promise<number | null> => {
+      // Helper function to make PageSpeed API calls with enhanced error handling
+      const fetchPageSpeedWithRetry = async (strategy: 'desktop' | 'mobile', maxRetries = 2): Promise<{ score: number | null, error?: string }> => {
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
+            console.log(`Attempt ${attempt}/${maxRetries} for ${strategy} strategy`);
+            
             const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(normalizedUrl)}&category=performance&strategy=${strategy}&key=${GOOGLE_API_KEY}`;
+            console.log(`API URL constructed for ${strategy}`);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
             
             const response = await fetch(apiUrl, {
               headers: {
                 'User-Agent': 'Website-Analyzer/1.0',
+                'Accept': 'application/json',
               },
-              signal: AbortSignal.timeout(30000) // 30 second timeout
+              signal: controller.signal
             });
             
-            console.log(`PageSpeed API ${strategy} response status: ${response.status}`);
+            clearTimeout(timeoutId);
+            console.log(`${strategy} API response - Status: ${response.status}, OK: ${response.ok}`);
             
             if (response.ok) {
               const data = await response.json();
-              const score = Math.round((data.lighthouseResult.categories.performance.score || 0) * 100);
-              console.log(`${strategy} PageSpeed score: ${score}`);
-              return score;
+              console.log(`${strategy} API response data keys:`, Object.keys(data));
+              
+              if (data.lighthouseResult?.categories?.performance?.score !== undefined) {
+                const score = Math.round(data.lighthouseResult.categories.performance.score * 100);
+                console.log(`✅ ${strategy} PageSpeed score: ${score}`);
+                return { score };
+              } else {
+                console.error(`❌ ${strategy} API response missing score data`);
+                return { score: null, error: 'Missing score data in response' };
+              }
             } else if (response.status === 429) {
-              // Rate limited - wait with exponential backoff
-              const waitTime = Math.pow(2, attempt) * 1000;
-              console.log(`Rate limited on attempt ${attempt}, waiting ${waitTime}ms`);
+              const waitTime = Math.min(Math.pow(2, attempt) * 1000, 8000); // Cap at 8 seconds
+              console.log(`⏳ Rate limited on attempt ${attempt}, waiting ${waitTime}ms`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
               continue;
+            } else if (response.status === 400) {
+              const errorText = await response.text();
+              console.error(`❌ ${strategy} API bad request (400):`, errorText);
+              return { score: null, error: `Bad request: ${errorText}` };
             } else {
               const errorText = await response.text();
-              console.error(`PageSpeed API ${strategy} error ${response.status}:`, errorText);
-              if (attempt === maxRetries) return null;
+              console.error(`❌ ${strategy} API error ${response.status}:`, errorText);
+              if (attempt === maxRetries) {
+                return { score: null, error: `HTTP ${response.status}: ${errorText}` };
+              }
             }
           } catch (error) {
-            console.error(`PageSpeed API ${strategy} attempt ${attempt} failed:`, error);
-            if (attempt === maxRetries) return null;
+            console.error(`❌ ${strategy} attempt ${attempt} failed:`, error instanceof Error ? error.message : 'Unknown error');
+            if (error instanceof Error && error.name === 'AbortError') {
+              console.error(`${strategy} request timed out`);
+              return { score: null, error: 'Request timeout' };
+            }
             
-            // Wait before retry with exponential backoff
-            const waitTime = Math.pow(2, attempt) * 1000;
+            if (attempt === maxRetries) {
+              return { score: null, error: error instanceof Error ? error.message : 'Unknown error' };
+            }
+            
+            // Wait before retry
+            const waitTime = Math.min(Math.pow(2, attempt) * 1000, 5000);
+            console.log(`Waiting ${waitTime}ms before retry...`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
           }
         }
-        return null;
+        return { score: null, error: 'Max retries exceeded' };
       };
       
       try {
-        // Fetch both desktop and mobile scores with retry logic
-        const [desktopScore, mobileScoreResult] = await Promise.all([
-          fetchPageSpeedWithRetry('desktop'),
-          fetchPageSpeedWithRetry('mobile')
-        ]);
+        console.log('🚀 Starting parallel PageSpeed API calls...');
         
-        if (desktopScore !== null) {
-          performanceScore = desktopScore;
-          console.log(`Successfully got desktop PageSpeed score: ${performanceScore}`);
+        // Fetch both scores with staggered timing to avoid rate limits 
+        const desktopResult = await fetchPageSpeedWithRetry('desktop');
+        
+        // Small delay between requests
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const mobileResult = await fetchPageSpeedWithRetry('mobile');
+        
+        console.log('📊 PageSpeed API Results:');
+        console.log(`Desktop: ${desktopResult.score !== null ? desktopResult.score : `Failed - ${desktopResult.error}`}`);
+        console.log(`Mobile: ${mobileResult.score !== null ? mobileResult.score : `Failed - ${mobileResult.error}`}`);
+        
+        // Use real data if available
+        if (desktopResult.score !== null) {
+          performanceScore = desktopResult.score;
+          usingRealData = true;
         }
         
-        if (mobileScoreResult !== null) {
-          mobileScore = mobileScoreResult;
-          console.log(`Successfully got mobile PageSpeed score: ${mobileScore}`);
+        if (mobileResult.score !== null) {
+          mobileScore = mobileResult.score;
+          usingRealData = true;
         }
         
-        // If we got at least one real score, we're successful
-        if (desktopScore !== null || mobileScoreResult !== null) {
-          console.log(`PageSpeed API success - Desktop: ${performanceScore}, Mobile: ${mobileScore}`);
+        if (usingRealData) {
+          console.log(`✅ Using REAL PageSpeed data - Desktop: ${performanceScore}, Mobile: ${mobileScore}`);
         } else {
-          console.log('All PageSpeed API calls failed, falling back to estimated scores');
+          console.log(`⚠️ All PageSpeed API calls failed, using estimated scores`);
+          console.log(`Errors - Desktop: ${desktopResult.error}, Mobile: ${mobileResult.error}`);
         }
+        
       } catch (error) {
-        console.error('PageSpeed API batch request failed:', error);
+        console.error('❌ PageSpeed API batch request failed:', error instanceof Error ? error.message : 'Unknown error');
       }
     } else {
-      console.log('No Google API key found, using estimated scores');
+      console.log('⚠️ No Google API key found in secrets, using estimated scores');
     }
     
     // Fallback to estimated scoring if PageSpeed API failed or no API key
-    if ((GOOGLE_API_KEY && performanceScore === 75) || !GOOGLE_API_KEY) {
-      console.log('Using estimated performance scoring');
+    if (!usingRealData) {
+      console.log('🔢 Computing estimated performance scores based on technical analysis');
       
-      if (hasSSL) performanceScore += 5;
-      if (hasCDN) performanceScore += 10;
-      if (caching === 'enabled') performanceScore += 10;
-      else if (caching === 'partial') performanceScore += 5;
-      if (imageOptimization === 'good') performanceScore += 10;
-      else if (imageOptimization === 'needs-improvement') performanceScore += 5;
+      // Start with base score based on technical factors
+      let baseScore = 65;
       
-      if (plugins > 20) performanceScore -= 10;
-      else if (plugins > 10) performanceScore -= 5;
-      
-      // Only generate random mobile score if we don't have real data
-      if (mobileScore === 65) {
-        mobileScore = Math.max(30, performanceScore - Math.floor(Math.random() * 15 + 5));
+      // Positive factors
+      if (hasSSL) {
+        baseScore += 8;
+        console.log('✅ SSL enabled: +8 points');
       }
+      if (hasCDN) {
+        baseScore += 12;
+        console.log('✅ CDN detected: +12 points');
+      }
+      if (caching === 'enabled') {
+        baseScore += 15;
+        console.log('✅ Caching enabled: +15 points');
+      } else if (caching === 'partial') {
+        baseScore += 8;
+        console.log('⚠️ Partial caching: +8 points');
+      }
+      if (imageOptimization === 'good') {
+        baseScore += 10;
+        console.log('✅ Good image optimization: +10 points');
+      } else if (imageOptimization === 'needs-improvement') {
+        baseScore += 4;
+        console.log('⚠️ Image optimization needs work: +4 points');
+      }
+      
+      // Negative factors
+      if (plugins > 25) {
+        baseScore -= 15;
+        console.log(`❌ Too many plugins (${plugins}): -15 points`);
+      } else if (plugins > 15) {
+        baseScore -= 8;
+        console.log(`⚠️ Many plugins (${plugins}): -8 points`);
+      } else if (plugins > 10) {
+        baseScore -= 4;
+        console.log(`⚠️ Several plugins (${plugins}): -4 points`);
+      }
+      
+      // WordPress-specific adjustments
+      if (isWordPress) {
+        baseScore -= 5; // WordPress generally slower than static sites
+        console.log('⚠️ WordPress site: -5 points');
+      }
+      
+      performanceScore = Math.min(Math.max(baseScore, 25), 90);
+      mobileScore = Math.max(25, performanceScore - Math.floor(Math.random() * 12 + 8)); // Mobile typically 8-20 points lower
+      
+      console.log(`📊 Estimated scores - Desktop: ${performanceScore}, Mobile: ${mobileScore}`);
     }
 
     // Generate recommendations
