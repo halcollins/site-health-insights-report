@@ -568,57 +568,65 @@ serve(async (req) => {
     
     // Fallback to estimated scoring if PageSpeed API failed or no API key
     if (!usingRealData) {
-      console.log('🔢 Computing estimated performance scores based on technical analysis');
+      console.log('🔢 Computing realistic estimated performance scores based on technical analysis');
       
-      // Start with base score based on technical factors
-      let baseScore = 65;
+      // Start with much lower base score to match real-world PageSpeed distributions
+      let baseScore = 45; // Much more realistic baseline
       
-      // Positive factors
+      // Smaller, more realistic positive factors
       if (hasSSL) {
-        baseScore += 8;
-        console.log('✅ SSL enabled: +8 points');
+        baseScore += 3;
+        console.log('✅ SSL enabled: +3 points');
       }
       if (hasCDN) {
-        baseScore += 12;
-        console.log('✅ CDN detected: +12 points');
+        baseScore += 6;
+        console.log('✅ CDN detected: +6 points');
       }
       if (caching === 'enabled') {
-        baseScore += 15;
-        console.log('✅ Caching enabled: +15 points');
-      } else if (caching === 'partial') {
         baseScore += 8;
-        console.log('⚠️ Partial caching: +8 points');
+        console.log('✅ Caching enabled: +8 points');
+      } else if (caching === 'partial') {
+        baseScore += 4;
+        console.log('⚠️ Partial caching: +4 points');
       }
       if (imageOptimization === 'good') {
-        baseScore += 10;
-        console.log('✅ Good image optimization: +10 points');
+        baseScore += 6;
+        console.log('✅ Good image optimization: +6 points');
       } else if (imageOptimization === 'needs-improvement') {
-        baseScore += 4;
-        console.log('⚠️ Image optimization needs work: +4 points');
+        baseScore += 2;
+        console.log('⚠️ Image optimization needs work: +2 points');
       }
       
-      // Negative factors
+      // Stronger negative impacts to reflect reality
       if (plugins > 25) {
-        baseScore -= 15;
-        console.log(`❌ Too many plugins (${plugins}): -15 points`);
+        baseScore -= 20;
+        console.log(`❌ Too many plugins (${plugins}): -20 points`);
       } else if (plugins > 15) {
-        baseScore -= 8;
-        console.log(`⚠️ Many plugins (${plugins}): -8 points`);
+        baseScore -= 12;
+        console.log(`⚠️ Many plugins (${plugins}): -12 points`);
       } else if (plugins > 10) {
-        baseScore -= 4;
-        console.log(`⚠️ Several plugins (${plugins}): -4 points`);
+        baseScore -= 8;
+        console.log(`⚠️ Several plugins (${plugins}): -8 points`);
       }
       
-      // WordPress-specific adjustments
+      // WordPress penalty reflects real performance impact
       if (isWordPress) {
-        baseScore -= 5; // WordPress generally slower than static sites
-        console.log('⚠️ WordPress site: -5 points');
+        baseScore -= 12; // WordPress sites typically score much lower
+        console.log('⚠️ WordPress site: -12 points');
       }
       
-      performanceScore = Math.min(Math.max(baseScore, 25), 90);
-      mobileScore = Math.max(25, performanceScore - Math.floor(Math.random() * 12 + 8)); // Mobile typically 8-20 points lower
+      // Additional realistic penalties
+      if (!hasCDN && !hasSSL) {
+        baseScore -= 8; // Multiple basic issues compound
+        console.log('❌ Missing basic optimizations: -8 points');
+      }
       
-      console.log(`📊 Estimated scores - Desktop: ${performanceScore}, Mobile: ${mobileScore}`);
+      // Keep scores in realistic ranges - PageSpeed scores are typically much lower
+      performanceScore = Math.min(Math.max(baseScore, 20), 75); // Cap much lower
+      mobileScore = Math.max(15, performanceScore - Math.floor(Math.random() * 8 + 12)); // Mobile typically 12-20 points lower
+      
+      console.log(`📊 Realistic estimated scores - Desktop: ${performanceScore}, Mobile: ${mobileScore}`);
+      console.log('⚠️ Using estimated scores - results may differ from actual PageSpeed testing');
     }
 
     // Generate recommendations

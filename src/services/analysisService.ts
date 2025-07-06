@@ -261,21 +261,27 @@ class AnalysisService {
   }
 
   private estimatePerformanceScore(wpData: WordPressDetectionResult): number {
-    let score = 75; // Base score
+    let score = 45; // Much more realistic base score
     
-    // Adjust based on technical factors
-    if (wpData.hasSSL) score += 5;
-    if (wpData.hasCDN) score += 10;
-    if (wpData.caching === 'enabled') score += 10;
-    else if (wpData.caching === 'partial') score += 5;
-    if (wpData.imageOptimization === 'good') score += 10;
-    else if (wpData.imageOptimization === 'needs-improvement') score += 5;
+    // Smaller, more realistic adjustments
+    if (wpData.hasSSL) score += 3;
+    if (wpData.hasCDN) score += 6;
+    if (wpData.caching === 'enabled') score += 8;
+    else if (wpData.caching === 'partial') score += 4;
+    if (wpData.imageOptimization === 'good') score += 6;
+    else if (wpData.imageOptimization === 'needs-improvement') score += 2;
     
-    // Penalize for too many plugins
-    if (wpData.plugins && wpData.plugins > 20) score -= 10;
-    else if (wpData.plugins && wpData.plugins > 10) score -= 5;
+    // Stronger penalties to reflect real performance impact
+    if (wpData.plugins && wpData.plugins > 20) score -= 20;
+    else if (wpData.plugins && wpData.plugins > 10) score -= 12;
     
-    return Math.min(Math.max(score, 30), 95); // Keep between 30-95
+    // WordPress penalty
+    if (wpData.isWordPress) score -= 12;
+    
+    // Additional realistic penalties
+    if (!wpData.hasCDN && !wpData.hasSSL) score -= 8;
+    
+    return Math.min(Math.max(score, 20), 75); // Much more realistic range
   }
 
   private generateRecommendations(pageSpeedData: PageSpeedResult | null, wpData: WordPressDetectionResult): string[] {
