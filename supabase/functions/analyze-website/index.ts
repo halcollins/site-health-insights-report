@@ -447,34 +447,89 @@ serve(async (req) => {
     let performanceScore = 75; // Fallback score
     let mobileScore = 65; // Fallback score
     
-    try {
-      console.log(`Fetching PageSpeed data for ${normalizedUrl}`);
+    // Get Google PageSpeed API key from Supabase secrets
+    const GOOGLE_API_KEY = Deno.env.get('GOOGLE_SPEED_TEST_KEY');
+    
+    if (GOOGLE_API_KEY) {
+      console.log(`Fetching PageSpeed data for ${normalizedUrl} with API key`);
       
-      // Desktop performance
-      const desktopResponse = await fetch(
-        `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(normalizedUrl)}&category=performance&strategy=desktop`
-      );
+      // Helper function to make PageSpeed API calls with retry logic
+      const fetchPageSpeedWithRetry = async (strategy: 'desktop' | 'mobile', maxRetries = 3): Promise<number | null> => {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(normalizedUrl)}&category=performance&strategy=${strategy}&key=${GOOGLE_API_KEY}`;
+            
+            const response = await fetch(apiUrl, {
+              headers: {
+                'User-Agent': 'Website-Analyzer/1.0',
+              },
+              signal: AbortSignal.timeout(30000) // 30 second timeout
+            });
+            
+            console.log(`PageSpeed API ${strategy} response status: ${response.status}`);
+            
+            if (response.ok) {
+              const data = await response.json();
+              const score = Math.round((data.lighthouseResult.categories.performance.score || 0) * 100);
+              console.log(`${strategy} PageSpeed score: ${score}`);
+              return score;
+            } else if (response.status === 429) {
+              // Rate limited - wait with exponential backoff
+              const waitTime = Math.pow(2, attempt) * 1000;
+              console.log(`Rate limited on attempt ${attempt}, waiting ${waitTime}ms`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            } else {
+              const errorText = await response.text();
+              console.error(`PageSpeed API ${strategy} error ${response.status}:`, errorText);
+              if (attempt === maxRetries) return null;
+            }
+          } catch (error) {
+            console.error(`PageSpeed API ${strategy} attempt ${attempt} failed:`, error);
+            if (attempt === maxRetries) return null;
+            
+            // Wait before retry with exponential backoff
+            const waitTime = Math.pow(2, attempt) * 1000;
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
+        }
+        return null;
+      };
       
-      if (desktopResponse.ok) {
-        const desktopData = await desktopResponse.json();
-        performanceScore = Math.round((desktopData.lighthouseResult.categories.performance.score || 0) * 100);
-        console.log(`Desktop PageSpeed score: ${performanceScore}`);
+      try {
+        // Fetch both desktop and mobile scores with retry logic
+        const [desktopScore, mobileScoreResult] = await Promise.all([
+          fetchPageSpeedWithRetry('desktop'),
+          fetchPageSpeedWithRetry('mobile')
+        ]);
+        
+        if (desktopScore !== null) {
+          performanceScore = desktopScore;
+          console.log(`Successfully got desktop PageSpeed score: ${performanceScore}`);
+        }
+        
+        if (mobileScoreResult !== null) {
+          mobileScore = mobileScoreResult;
+          console.log(`Successfully got mobile PageSpeed score: ${mobileScore}`);
+        }
+        
+        // If we got at least one real score, we're successful
+        if (desktopScore !== null || mobileScoreResult !== null) {
+          console.log(`PageSpeed API success - Desktop: ${performanceScore}, Mobile: ${mobileScore}`);
+        } else {
+          console.log('All PageSpeed API calls failed, falling back to estimated scores');
+        }
+      } catch (error) {
+        console.error('PageSpeed API batch request failed:', error);
       }
+    } else {
+      console.log('No Google API key found, using estimated scores');
+    }
+    
+    // Fallback to estimated scoring if PageSpeed API failed or no API key
+    if ((GOOGLE_API_KEY && performanceScore === 75) || !GOOGLE_API_KEY) {
+      console.log('Using estimated performance scoring');
       
-      // Mobile performance
-      const mobileResponse = await fetch(
-        `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(normalizedUrl)}&category=performance&strategy=mobile`
-      );
-      
-      if (mobileResponse.ok) {
-        const mobileData = await mobileResponse.json();
-        mobileScore = Math.round((mobileData.lighthouseResult.categories.performance.score || 0) * 100);
-        console.log(`Mobile PageSpeed score: ${mobileScore}`);
-      }
-    } catch (error) {
-      console.error('PageSpeed API error, using estimated scores:', error);
-      
-      // Fallback to estimated scoring if PageSpeed API fails
       if (hasSSL) performanceScore += 5;
       if (hasCDN) performanceScore += 10;
       if (caching === 'enabled') performanceScore += 10;
@@ -485,7 +540,10 @@ serve(async (req) => {
       if (plugins > 20) performanceScore -= 10;
       else if (plugins > 10) performanceScore -= 5;
       
-      mobileScore = Math.max(30, performanceScore - Math.floor(Math.random() * 15 + 5));
+      // Only generate random mobile score if we don't have real data
+      if (mobileScore === 65) {
+        mobileScore = Math.max(30, performanceScore - Math.floor(Math.random() * 15 + 5));
+      }
     }
 
     // Generate recommendations
