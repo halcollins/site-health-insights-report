@@ -443,21 +443,50 @@ serve(async (req) => {
     const imageOptimization = analyzeImageOptimization(html);
     const caching = analyzeCaching(headers);
 
-    // Performance scoring
-    let performanceScore = 75; // Base score
+// Get actual PageSpeed Insights data
+    let performanceScore = 75; // Fallback score
+    let mobileScore = 65; // Fallback score
     
-    if (hasSSL) performanceScore += 5;
-    if (hasCDN) performanceScore += 10;
-    if (caching === 'enabled') performanceScore += 10;
-    else if (caching === 'partial') performanceScore += 5;
-    if (imageOptimization === 'good') performanceScore += 10;
-    else if (imageOptimization === 'needs-improvement') performanceScore += 5;
-    
-    // Penalize for too many plugins
-    if (plugins > 20) performanceScore -= 10;
-    else if (plugins > 10) performanceScore -= 5;
-
-    const mobileScore = Math.max(30, performanceScore - Math.floor(Math.random() * 15 + 5));
+    try {
+      console.log(`Fetching PageSpeed data for ${normalizedUrl}`);
+      
+      // Desktop performance
+      const desktopResponse = await fetch(
+        `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(normalizedUrl)}&category=performance&strategy=desktop`
+      );
+      
+      if (desktopResponse.ok) {
+        const desktopData = await desktopResponse.json();
+        performanceScore = Math.round((desktopData.lighthouseResult.categories.performance.score || 0) * 100);
+        console.log(`Desktop PageSpeed score: ${performanceScore}`);
+      }
+      
+      // Mobile performance
+      const mobileResponse = await fetch(
+        `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(normalizedUrl)}&category=performance&strategy=mobile`
+      );
+      
+      if (mobileResponse.ok) {
+        const mobileData = await mobileResponse.json();
+        mobileScore = Math.round((mobileData.lighthouseResult.categories.performance.score || 0) * 100);
+        console.log(`Mobile PageSpeed score: ${mobileScore}`);
+      }
+    } catch (error) {
+      console.error('PageSpeed API error, using estimated scores:', error);
+      
+      // Fallback to estimated scoring if PageSpeed API fails
+      if (hasSSL) performanceScore += 5;
+      if (hasCDN) performanceScore += 10;
+      if (caching === 'enabled') performanceScore += 10;
+      else if (caching === 'partial') performanceScore += 5;
+      if (imageOptimization === 'good') performanceScore += 10;
+      else if (imageOptimization === 'needs-improvement') performanceScore += 5;
+      
+      if (plugins > 20) performanceScore -= 10;
+      else if (plugins > 10) performanceScore -= 5;
+      
+      mobileScore = Math.max(30, performanceScore - Math.floor(Math.random() * 15 + 5));
+    }
 
     // Generate recommendations
     const recommendations: string[] = [];
