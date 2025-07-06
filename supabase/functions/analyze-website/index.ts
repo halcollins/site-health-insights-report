@@ -3,9 +3,23 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
 };
 
-// Builtwith API key will be loaded from Supabase secrets
+// Rate limiting store (in production, use Redis or database)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+// Security configuration
+const SECURITY_CONFIG = {
+  MAX_REQUESTS_PER_MINUTE: 10,
+  MAX_URL_LENGTH: 2048,
+  ALLOWED_PROTOCOLS: ['http:', 'https:'],
+  BLOCKED_DOMAINS: ['localhost', '127.0.0.1', '0.0.0.0', '169.254.169.254'], // Block local/internal IPs
+  BLOCKED_TLDS: ['.local', '.internal'],
+};
 
 interface Technology {
   name: string;
@@ -236,6 +250,97 @@ function mergeTechnologies(builtwithTech: Technology[], customTech: Technology[]
   return merged;
 }
 
+// Security functions
+function validateAndSanitizeUrl(url: string): { isValid: boolean; normalizedUrl?: string; error?: string } {
+  try {
+    // Check URL length
+    if (url.length > SECURITY_CONFIG.MAX_URL_LENGTH) {
+      return { isValid: false, error: 'URL too long' };
+    }
+
+    // Normalize URL
+    const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
+    const urlObj = new URL(normalizedUrl);
+
+    // Check protocol
+    if (!SECURITY_CONFIG.ALLOWED_PROTOCOLS.includes(urlObj.protocol)) {
+      return { isValid: false, error: 'Invalid protocol' };
+    }
+
+    // Check for blocked domains/IPs
+    const hostname = urlObj.hostname.toLowerCase();
+    if (SECURITY_CONFIG.BLOCKED_DOMAINS.some(blocked => hostname.includes(blocked))) {
+      return { isValid: false, error: 'Access to internal/local resources not allowed' };
+    }
+
+    // Check for blocked TLDs
+    if (SECURITY_CONFIG.BLOCKED_TLDS.some(tld => hostname.endsWith(tld))) {
+      return { isValid: false, error: 'Access to internal domains not allowed' };
+    }
+
+    // Check for private IP ranges
+    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (ipRegex.test(hostname)) {
+      const parts = hostname.split('.').map(Number);
+      // Block private IP ranges: 10.x.x.x, 172.16-31.x.x, 192.168.x.x
+      if (
+        parts[0] === 10 ||
+        (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+        (parts[0] === 192 && parts[1] === 168) ||
+        (parts[0] === 127) // localhost
+      ) {
+        return { isValid: false, error: 'Access to private IP ranges not allowed' };
+      }
+    }
+
+    return { isValid: true, normalizedUrl };
+  } catch (error) {
+    return { isValid: false, error: 'Invalid URL format' };
+  }
+}
+
+function checkRateLimit(clientIP: string): { allowed: boolean; remaining?: number } {
+  const now = Date.now();
+  const key = clientIP;
+  const limit = rateLimitStore.get(key);
+
+  // Reset if window expired
+  if (!limit || now > limit.resetTime) {
+    rateLimitStore.set(key, { count: 1, resetTime: now + 60000 }); // 1 minute window
+    return { allowed: true, remaining: SECURITY_CONFIG.MAX_REQUESTS_PER_MINUTE - 1 };
+  }
+
+  // Check if under limit
+  if (limit.count < SECURITY_CONFIG.MAX_REQUESTS_PER_MINUTE) {
+    limit.count++;
+    return { allowed: true, remaining: SECURITY_CONFIG.MAX_REQUESTS_PER_MINUTE - limit.count };
+  }
+
+  return { allowed: false };
+}
+
+function sanitizeError(error: unknown): string {
+  // Return generic error messages to prevent information disclosure
+  if (error instanceof Error) {
+    // Only expose specific safe error messages
+    const safeErrors = [
+      'URL too long',
+      'Invalid protocol', 
+      'Invalid URL format',
+      'Access to internal/local resources not allowed',
+      'Access to internal domains not allowed',
+      'Access to private IP ranges not allowed',
+      'Rate limit exceeded'
+    ];
+    
+    if (safeErrors.includes(error.message)) {
+      return error.message;
+    }
+  }
+  
+  return 'Analysis failed. Please check the URL and try again.';
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -243,21 +348,70 @@ serve(async (req) => {
   }
 
   try {
+    // Get client IP for rate limiting
+    const clientIP = req.headers.get('x-forwarded-for') || 
+                     req.headers.get('x-real-ip') || 
+                     'unknown';
+
+    // Check rate limiting
+    const rateLimitCheck = checkRateLimit(clientIP);
+    if (!rateLimitCheck.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Rate limit exceeded',
+          details: 'Too many requests. Please wait before trying again.'
+        }), 
+        {
+          status: 429,
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': '60'
+          },
+        }
+      );
+    }
+
     const { url } = await req.json();
     
     if (!url) {
-      throw new Error('URL is required');
+      return new Response(
+        JSON.stringify({ 
+          error: 'URL is required',
+          details: 'Please provide a valid URL to analyze'
+        }), 
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
-    console.log(`Analyzing website: ${url}`);
+    // Validate and sanitize URL
+    const urlValidation = validateAndSanitizeUrl(url);
+    if (!urlValidation.isValid) {
+      return new Response(
+        JSON.stringify({ 
+          error: sanitizeError(new Error(urlValidation.error || 'Invalid URL')),
+          details: 'Please provide a valid public URL'
+        }), 
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const normalizedUrl = urlValidation.normalizedUrl!;
+    console.log(`Analyzing website: ${normalizedUrl} from IP: ${clientIP}`);
 
     // Extract domain for Builtwith API
-    const domain = new URL(url).hostname;
+    const domain = new URL(normalizedUrl).hostname;
 
     // Fetch website content for analysis with cache busting
     const corsProxy = 'https://api.allorigins.win/get?url=';
     const timestamp = Date.now();
-    const cacheBustUrl = url.includes('?') ? `${url}&_cb=${timestamp}` : `${url}?_cb=${timestamp}`;
+    const cacheBustUrl = normalizedUrl.includes('?') ? `${normalizedUrl}&_cb=${timestamp}` : `${normalizedUrl}?_cb=${timestamp}`;
     const response = await fetch(`${corsProxy}${encodeURIComponent(cacheBustUrl)}`);
     
     if (!response.ok) {
@@ -344,7 +498,7 @@ serve(async (req) => {
     }
 
     const result: AnalysisResult = {
-      url,
+      url: normalizedUrl,
       performanceScore: Math.min(Math.max(performanceScore, 30), 95),
       mobileScore,
       isWordPress,
@@ -359,12 +513,13 @@ serve(async (req) => {
       technologies
     };
 
-    console.log(`Analysis completed for ${url}:`, {
+    console.log(`Analysis completed for ${normalizedUrl}:`, {
       isWordPress,
       wpVersion,
       theme,
       plugins,
-      technologiesFound: technologies.length
+      technologiesFound: technologies.length,
+      clientIP: clientIP.substring(0, 10) + '...' // Log partial IP for security
     });
 
     return new Response(JSON.stringify(result), {
@@ -373,20 +528,28 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
-        'Expires': '0'
+        'Expires': '0',
+        'Content-Security-Policy': "default-src 'none'; script-src 'none'; object-src 'none'; base-uri 'none';",
+        'X-Rate-Limit-Remaining': String(rateLimitCheck.remaining || 0)
       },
     });
 
   } catch (error) {
-    console.error('Error in analyze-website function:', error);
+    console.error('Error in analyze-website function:', error instanceof Error ? error.message : 'Unknown error');
+    const sanitizedError = sanitizeError(error);
+    
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Analysis failed',
+        error: sanitizedError,
         details: 'Please check the URL and try again'
       }), 
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Content-Security-Policy': "default-src 'none'; script-src 'none'; object-src 'none'; base-uri 'none';"
+        },
       }
     );
   }

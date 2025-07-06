@@ -74,27 +74,30 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
+  // Create CSS safely without dangerouslySetInnerHTML
+  const cssRules = Object.entries(THEMES)
+    .map(([theme, prefix]) => {
+      const rules = colorConfig
+        .map(([key, itemConfig]) => {
+          const color =
+            itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+            itemConfig.color
+          
+          // Sanitize color value to prevent CSS injection
+          const sanitizedColor = typeof color === 'string' ? 
+            color.replace(/[^a-zA-Z0-9#()%.,\s-]/g, '') : 
+            String(color).replace(/[^a-zA-Z0-9#()%.,\s-]/g, '')
+          
+          return `--color-${key}: ${sanitizedColor};`
+        })
+        .join('\n')
+      
+      return `${prefix} [data-chart=${id}] {\n${rules}\n}`
+    })
+    .join('\n')
+
   return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
-      }}
-    />
+    <style>{cssRules}</style>
   )
 }
 
