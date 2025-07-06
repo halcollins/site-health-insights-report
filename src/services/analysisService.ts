@@ -38,6 +38,12 @@ interface AnalysisResult {
   imageOptimization: 'good' | 'needs-improvement' | 'poor';
   caching: 'enabled' | 'partial' | 'disabled';
   recommendations: string[];
+  technologies?: Array<{
+    name: string;
+    confidence: number;
+    version?: string;
+    category: string;
+  }>;
 }
 
 class AnalysisService {
@@ -45,6 +51,29 @@ class AnalysisService {
   private readonly CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
   async analyzeWebsite(url: string): Promise<AnalysisResult> {
+    try {
+      // Use Supabase Edge Function for enhanced analysis
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      const { data, error } = await supabase.functions.invoke('analyze-website', {
+        body: { url }
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        // Fallback to client-side analysis if Edge Function fails
+        return this.fallbackAnalysis(url);
+      }
+
+      return data as AnalysisResult;
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      // Fallback to client-side analysis
+      return this.fallbackAnalysis(url);
+    }
+  }
+
+  private async fallbackAnalysis(url: string): Promise<AnalysisResult> {
     try {
       // Always run WordPress detection
       const wordpressData = await this.detectWordPress(url);
@@ -54,14 +83,7 @@ class AnalysisService {
       try {
         pageSpeedData = await this.getPageSpeedInsights(url);
       } catch (error) {
-        console.warn('PageSpeed API unavailable, trying GTMetrix fallback:', error);
-        
-        // Try GTMetrix as fallback if user has provided API key
-        try {
-          pageSpeedData = await this.getGTMetrixInsights(url);
-        } catch (gtError) {
-          console.warn('GTMetrix API also unavailable, using estimated scores:', gtError);
-        }
+        console.warn('PageSpeed API unavailable, using estimated scores:', error);
       }
 
       const recommendations = this.generateRecommendations(pageSpeedData, wordpressData);
@@ -71,7 +93,7 @@ class AnalysisService {
         ? Math.round((pageSpeedData.lighthouseResult.categories.performance.score || 0) * 100)
         : this.estimatePerformanceScore(wordpressData);
       
-      const mobileScore = performanceScore - Math.floor(Math.random() * 15 + 5); // Mobile typically 5-20 points lower
+      const mobileScore = performanceScore - Math.floor(Math.random() * 15 + 5);
 
       return {
         url,
@@ -81,7 +103,7 @@ class AnalysisService {
         recommendations
       };
     } catch (error) {
-      console.error('Analysis failed:', error);
+      console.error('Fallback analysis failed:', error);
       throw new Error('Failed to analyze website. Please check the URL and try again.');
     }
   }
