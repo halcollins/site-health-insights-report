@@ -123,7 +123,7 @@ async function getBuiltWithTechnologies(domain: string): Promise<Technology[]> {
     
     if (!response.ok) {
       console.error(`Builtwith API error: ${response.status}`);
-      return detectTechnologiesFallback(domain);
+      return [];
     }
 
     const data = await response.json();
@@ -153,16 +153,74 @@ async function getBuiltWithTechnologies(domain: string): Promise<Technology[]> {
     return technologies;
   } catch (error) {
     console.error('Builtwith API call failed:', error);
-    return detectTechnologiesFallback(domain);
+    return [];
   }
 }
 
-// Fallback technology detection
-function detectTechnologiesFallback(domain: string): Technology[] {
-  // Basic fallback - we'll still try to detect some common technologies
-  // This would need the HTML content, but for now return empty array
-  console.log(`Using fallback detection for: ${domain}`);
-  return [];
+// Custom technology detection (complementary to Builtwith)
+function detectTechnologiesCustom(html: string, headers: Record<string, string>): Technology[] {
+  const technologies: Technology[] = [];
+  const htmlLower = html.toLowerCase();
+
+  // WordPress
+  if (detectWordPress(html, headers)) {
+    const version = extractWordPressVersion(html);
+    technologies.push({
+      name: 'WordPress',
+      confidence: 95,
+      version,
+      category: 'CMS'
+    });
+  }
+
+  // JavaScript frameworks/libraries
+  if (htmlLower.includes('react')) {
+    technologies.push({ name: 'React', confidence: 80, category: 'JavaScript frameworks' });
+  }
+  if (htmlLower.includes('vue')) {
+    technologies.push({ name: 'Vue.js', confidence: 80, category: 'JavaScript frameworks' });
+  }
+  if (htmlLower.includes('angular')) {
+    technologies.push({ name: 'Angular', confidence: 80, category: 'JavaScript frameworks' });
+  }
+  if (htmlLower.includes('jquery')) {
+    technologies.push({ name: 'jQuery', confidence: 90, category: 'JavaScript libraries' });
+  }
+
+  // CSS frameworks
+  if (htmlLower.includes('bootstrap')) {
+    technologies.push({ name: 'Bootstrap', confidence: 85, category: 'CSS frameworks' });
+  }
+  if (htmlLower.includes('tailwind')) {
+    technologies.push({ name: 'Tailwind CSS', confidence: 85, category: 'CSS frameworks' });
+  }
+
+  // Analytics
+  if (htmlLower.includes('google-analytics') || htmlLower.includes('gtag')) {
+    technologies.push({ name: 'Google Analytics', confidence: 95, category: 'Analytics' });
+  }
+
+  // CDN detection
+  if (detectCDN(html, headers)) {
+    technologies.push({ name: 'CDN', confidence: 90, category: 'CDN' });
+  }
+
+  return technologies;
+}
+
+// Merge technologies from different sources, removing duplicates
+function mergeTechnologies(builtwithTech: Technology[], customTech: Technology[]): Technology[] {
+  const merged = [...builtwithTech];
+  const existingNames = new Set(builtwithTech.map(tech => tech.name.toLowerCase()));
+
+  // Add custom technologies that aren't already detected by Builtwith
+  customTech.forEach(tech => {
+    if (!existingNames.has(tech.name.toLowerCase())) {
+      merged.push(tech);
+    }
+  });
+
+  return merged;
 }
 
 serve(async (req) => {
@@ -195,8 +253,14 @@ serve(async (req) => {
     const html = data.contents;
     const headers: Record<string, string> = {};
 
-    // Detect technologies using Builtwith API
-    const technologies = await getBuiltWithTechnologies(domain);
+    // Detect technologies using both Builtwith API and custom detection
+    const builtwithTechnologies = await getBuiltWithTechnologies(domain);
+    const customTechnologies = detectTechnologiesCustom(html, headers);
+    
+    // Merge both technology detection results
+    const technologies = mergeTechnologies(builtwithTechnologies, customTechnologies);
+    
+    console.log(`Found ${builtwithTechnologies.length} technologies via Builtwith, ${customTechnologies.length} via custom detection, ${technologies.length} total`);
 
     // WordPress analysis
     const isWordPress = detectWordPress(html, headers);
