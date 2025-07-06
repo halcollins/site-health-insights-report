@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const BUILTWITH_API_KEY = '4f1a5a8f-bc2e-430c-958e-fa03d6f0bade';
+// Builtwith API key will be loaded from Supabase secrets
 
 interface Technology {
   name: string;
@@ -116,9 +116,22 @@ function analyzeImageOptimization(html: string): 'good' | 'needs-improvement' | 
 // Builtwith API integration
 async function getBuiltWithTechnologies(domain: string): Promise<Technology[]> {
   try {
-    const apiUrl = `https://api.builtwith.com/free1/api.json?KEY=${BUILTWITH_API_KEY}&LOOKUP=${encodeURIComponent(domain)}`;
+    // Get API key from Supabase secrets
+    const BUILTWITH_API_KEY = Deno.env.get('BUILTWITH_API_KEY');
     
-    console.log(`Calling Builtwith API for domain: ${domain}`);
+    if (!BUILTWITH_API_KEY) {
+      console.log('Builtwith API key not found in secrets, skipping Builtwith detection');
+      return [];
+    }
+
+    // Add cache busting timestamp and random delay
+    const timestamp = Date.now();
+    const randomDelay = Math.floor(Math.random() * 1000) + 500; // 500-1500ms delay
+    await new Promise(resolve => setTimeout(resolve, randomDelay));
+    
+    const apiUrl = `https://api.builtwith.com/free1/api.json?KEY=${BUILTWITH_API_KEY}&LOOKUP=${encodeURIComponent(domain)}&t=${timestamp}`;
+    
+    console.log(`Calling Builtwith API for domain: ${domain} with timestamp: ${timestamp}`);
     const response = await fetch(apiUrl);
     
     if (!response.ok) {
@@ -241,9 +254,11 @@ serve(async (req) => {
     // Extract domain for Builtwith API
     const domain = new URL(url).hostname;
 
-    // Fetch website content for analysis
+    // Fetch website content for analysis with cache busting
     const corsProxy = 'https://api.allorigins.win/get?url=';
-    const response = await fetch(`${corsProxy}${encodeURIComponent(url)}`);
+    const timestamp = Date.now();
+    const cacheBustUrl = url.includes('?') ? `${url}&_cb=${timestamp}` : `${url}?_cb=${timestamp}`;
+    const response = await fetch(`${corsProxy}${encodeURIComponent(cacheBustUrl)}`);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch website: ${response.status}`);
@@ -353,7 +368,13 @@ serve(async (req) => {
     });
 
     return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      },
     });
 
   } catch (error) {
