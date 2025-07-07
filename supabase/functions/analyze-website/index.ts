@@ -12,6 +12,10 @@ const corsHeaders = {
 // Rate limiting store (in production, use Redis or database)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
+// Result caching store (in production, use Redis or database)
+const resultCache = new Map<string, { result: any; timestamp: number }>();
+const CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours
+
 // Security configuration
 const SECURITY_CONFIG = {
   MAX_REQUESTS_PER_MINUTE: 10,
@@ -42,6 +46,9 @@ interface AnalysisResult {
   caching: 'enabled' | 'partial' | 'disabled';
   recommendations: string[];
   technologies?: Technology[];
+  dataSource: 'real' | 'estimated';
+  confidence: 'high' | 'medium' | 'low';
+  analysisTimestamp: string;
 }
 
 // Custom technology detection functions
@@ -405,6 +412,21 @@ serve(async (req) => {
     const normalizedUrl = urlValidation.normalizedUrl!;
     console.log(`Analyzing website: ${normalizedUrl} from IP: ${clientIP}`);
 
+    // Check cache first
+    const cacheKey = normalizedUrl;
+    const cachedResult = resultCache.get(cacheKey);
+    if (cachedResult && (Date.now() - cachedResult.timestamp) < CACHE_DURATION) {
+      console.log(`✅ Returning cached result for ${normalizedUrl}`);
+      return new Response(JSON.stringify(cachedResult.result), {
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'X-Cache': 'HIT',
+          'X-Rate-Limit-Remaining': String(rateLimitCheck.remaining || 0)
+        },
+      });
+    }
+
     // Extract domain for Builtwith API
     const domain = new URL(normalizedUrl).hostname;
 
@@ -680,8 +702,15 @@ serve(async (req) => {
       imageOptimization,
       caching,
       recommendations: recommendations.slice(0, 6),
-      technologies
+      technologies,
+      dataSource: usingRealData ? 'real' : 'estimated',
+      confidence: usingRealData ? 'high' : (builtwithTechnologies.length > 0 ? 'medium' : 'low'),
+      analysisTimestamp: new Date().toISOString()
     };
+
+    // Cache the result
+    resultCache.set(cacheKey, { result, timestamp: Date.now() });
+    console.log(`💾 Cached result for ${normalizedUrl}`);
 
     console.log(`Analysis completed for ${normalizedUrl}:`, {
       isWordPress,

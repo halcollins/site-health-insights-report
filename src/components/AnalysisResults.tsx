@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, AlertTriangle, XCircle, Globe, Shield, Zap, Image, Server } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, Globe, Shield, Zap, Image, Server, TrendingUp, Cpu } from "lucide-react";
 
 interface AnalysisResult {
   url: string;
@@ -16,6 +16,15 @@ interface AnalysisResult {
   caching: 'enabled' | 'partial' | 'disabled';
   mobileScore: number;
   recommendations: string[];
+  technologies?: Array<{
+    name: string;
+    confidence: number;
+    version?: string;
+    category: string;
+  }>;
+  dataSource: 'real' | 'estimated';
+  confidence: 'high' | 'medium' | 'low';
+  analysisTimestamp: string;
 }
 
 interface AnalysisResultsProps {
@@ -56,6 +65,21 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
     );
   };
 
+  const getConfidenceBadge = (confidence: string, dataSource: string) => {
+    const isReal = dataSource === 'real';
+    const badgeClass = isReal 
+      ? "border-success text-success" 
+      : confidence === 'medium' 
+        ? "border-warning text-warning"
+        : "border-muted text-muted-foreground";
+    
+    return (
+      <Badge variant="outline" className={badgeClass}>
+        {isReal ? 'Real Data' : 'Estimated'} • {confidence.charAt(0).toUpperCase() + confidence.slice(1)} Confidence
+      </Badge>
+    );
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
@@ -76,6 +100,70 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           </div>
         </CardHeader>
       </Card>
+
+      {/* Data Quality & Technologies */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Data Quality */}
+        <Card className="bg-card/50 backdrop-blur-sm border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              <span>Data Quality</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-foreground">Analysis Source</span>
+              {getConfidenceBadge(result.confidence, result.dataSource)}
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-foreground">Analyzed</span>
+              <Badge variant="outline" className="border-muted text-muted-foreground">
+                {new Date(result.analysisTimestamp).toLocaleDateString()}
+              </Badge>
+            </div>
+            {result.dataSource === 'estimated' && (
+              <p className="text-sm text-muted-foreground">
+                💡 Scores are estimated based on technical analysis. Real PageSpeed data may vary.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Technology Stack */}
+        {result.technologies && result.technologies.length > 0 && (
+          <Card className="bg-card/50 backdrop-blur-sm border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Cpu className="w-5 h-5 text-primary" />
+                <span>Technology Stack</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {result.technologies.slice(0, 12).map((tech, index) => (
+                  <Badge 
+                    key={index} 
+                    variant="outline" 
+                    className="border-primary/30 text-primary"
+                    title={`${tech.category}${tech.version ? ` v${tech.version}` : ''}`}
+                  >
+                    {tech.name}
+                  </Badge>
+                ))}
+                {result.technologies.length > 12 && (
+                  <Badge variant="outline" className="border-muted text-muted-foreground">
+                    +{result.technologies.length - 12} more
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Powered by BuiltWith API
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* WordPress Detection */}
       <Card className="bg-card/50 backdrop-blur-sm border-border">

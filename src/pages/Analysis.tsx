@@ -16,6 +16,15 @@ interface AnalysisResult {
   caching: 'enabled' | 'partial' | 'disabled';
   mobileScore: number;
   recommendations: string[];
+  technologies?: Array<{
+    name: string;
+    confidence: number;
+    version?: string;
+    category: string;
+  }>;
+  dataSource: 'real' | 'estimated';
+  confidence: 'high' | 'medium' | 'low';
+  analysisTimestamp: string;
 }
 
 const Analysis = () => {

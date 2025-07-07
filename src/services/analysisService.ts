@@ -44,6 +44,9 @@ interface AnalysisResult {
     version?: string;
     category: string;
   }>;
+  dataSource: 'real' | 'estimated';
+  confidence: 'high' | 'medium' | 'low';
+  analysisTimestamp: string;
 }
 
 class AnalysisService {
@@ -100,7 +103,10 @@ class AnalysisService {
         performanceScore,
         mobileScore,
         ...wordpressData,
-        recommendations
+        recommendations,
+        dataSource: pageSpeedData ? 'real' : 'estimated',
+        confidence: pageSpeedData ? 'high' : 'low',
+        analysisTimestamp: new Date().toISOString()
       };
     } catch (error) {
       console.error('Fallback analysis failed:', error);
