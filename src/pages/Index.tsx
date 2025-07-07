@@ -53,9 +53,11 @@ const Index = () => {
               <span className="text-primary">WordPress</span>{" "}
               Website
             </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
-              Get a comprehensive analysis of your WordPress site's performance, security, and optimization opportunities. Free audit in seconds.
-            </p>
+            <div className="bg-background/20 backdrop-blur-md rounded-lg p-6 border border-border/30">
+              <p className="text-xl md:text-2xl text-foreground max-w-3xl mx-auto">
+                Get a comprehensive analysis of your WordPress site's performance, security, and optimization opportunities. Free audit in seconds.
+              </p>
+            </div>
             
             <div className="pt-8">
               <UrlAnalysisForm onAnalyze={performAnalysis} isLoading={isAnalyzing} />
