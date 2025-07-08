@@ -67,7 +67,7 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-card/30">
+      <section id="Features" className="py-20 bg-card/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -77,7 +77,7 @@ const Index = () => {
               Our comprehensive audit covers all critical aspects of your WordPress website
             </p>
           </div>
-
+            
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
