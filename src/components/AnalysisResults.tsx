@@ -307,11 +307,11 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
             Our WordPress experts can help you implement these recommendations and boost your site's performance, security, and SEO.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button size="lg" className="bg-primary hover:bg-primary/70 text-primary-foreground">
               Schedule Free Consultation
             </Button>
-            <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10">
-              Download Report
+            <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/50">
+              Contact Us
             </Button>
           </div>
         </CardContent>
