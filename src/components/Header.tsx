@@ -13,27 +13,6 @@ const Header = () => {
             <span className="text-primary font-bold text-xl ml-1">Analyzer</span>
           </div>
         </Link>
-
-        <nav className="hidden md:flex items-center space-x-6">
-          <Link 
-            to="/" 
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Home
-          </Link>
-          <Link 
-            to="/#features" 
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Features
-          </Link>
-          <Link 
-            to="mailto:hal.webtech@gmail.com" 
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Contact
-          </Link>
-        </nav>
       </div>
     </header>
   );
