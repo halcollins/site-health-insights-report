@@ -308,14 +308,14 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button size="lg" className="bg-primary hover:bg-primary/60 text-primary-foreground">
-              <Link to="mailto:hal.webtech@gmail.com?subject=Schedule Free Consultation">
+              <a href="mailto:hal.webtech@gmail.com?subject=Schedule Free Consultation">
                 Schedule Free Consultation
-              </Link>
+              </a>
             </Button>
             <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/40">
-              <Link to="mailto:hal.webtech@gmail.com?subject=Schedule Free Consultation">
+              <a href="mailto:hal.webtech@gmail.com?subject=Contact Us">
                 Contact Us
-              </Link>
+              </a>
             </Button>
           </div>
         </CardContent>
