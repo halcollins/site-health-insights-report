@@ -307,7 +307,7 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
             Our WordPress experts can help you implement these recommendations and boost your site's performance, security, and SEO.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button size="lg" className="bg-primary hover:bg-primary/60 text-primary-foreground">
+            <Button size="lg" variant="outline" className="bg-primary hover:bg-primary/60 text-primary-foreground">
               <a href="mailto:hal.webtech@gmail.com?subject=Schedule Free Consultation">
                 Schedule Free Consultation
               </a>
