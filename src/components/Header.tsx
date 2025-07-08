@@ -21,12 +21,12 @@ const Header = () => {
           >
             Home
           </Link>
-          <!--<Link 
+          */<Link 
             to="#features" 
             className="text-muted-foreground hover:text-foreground transition-colors"
           >
             Features
-          </Link>-->
+          </Link>/*
           <Link 
             to="mailto:hal.webtech@gmail.com" 
             className="text-muted-foreground hover:text-foreground transition-colors"
