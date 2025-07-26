@@ -17,7 +17,7 @@ All colors MUST be HSL.
     --popover: 210 11% 17%;
     --popover-foreground: 210 11% 88%;
 
-    --primary: 28 100% 50%;
+    --primary: 48 96% 61%;
     --primary-foreground: 210 11% 15%;
 
     --secondary: 210 11% 22%;
@@ -26,7 +26,7 @@ All colors MUST be HSL.
     --muted: 210 11% 22%;
     --muted-foreground: 210 11% 68%;
 
-    --accent: 28 100% 50%;
+    --accent: 48 96% 61%;
     --accent-foreground: 210 11% 15%;
 
     --destructive: 0 84% 60%;
@@ -34,7 +34,7 @@ All colors MUST be HSL.
 
     --border: 210 11% 25%;
     --input: 210 11% 22%;
-    --ring: 28 100% 50%;
+    --ring: 48 96% 61%;
 
     --success: 142 76% 36%;
     --success-foreground: 210 11% 96%;
@@ -42,7 +42,7 @@ All colors MUST be HSL.
     --warning: 48 96% 53%;
     --warning-foreground: 210 11% 15%;
     
-    --hero-gradient: linear-gradient(135deg, hsl(210 11% 17%) 0%, hsl(210 11% 12%) 50%, hsl(28 100% 50% / 0.1) 100%);
+    --hero-gradient: linear-gradient(135deg, hsl(210 11% 17%) 0%, hsl(210 11% 12%) 50%, hsl(48 96% 61% / 0.1) 100%);
 
     --radius: 0.5rem;
 
@@ -73,7 +73,7 @@ All colors MUST be HSL.
     --popover: 210 11% 15%;
     --popover-foreground: 210 11% 90%;
 
-    --primary: 28 100% 55%;
+    --primary: 48 96% 61%;
     --primary-foreground: 210 11% 12%;
 
     --secondary: 210 11% 20%;
@@ -82,7 +82,7 @@ All colors MUST be HSL.
     --muted: 210 11% 20%;
     --muted-foreground: 210 11% 65%;
 
-    --accent: 28 100% 55%;
+    --accent: 48 96% 61%;
     --accent-foreground: 210 11% 12%;
 
     --destructive: 0 84% 65%;
@@ -90,7 +90,7 @@ All colors MUST be HSL.
 
     --border: 210 11% 20%;
     --input: 210 11% 20%;
-    --ring: 28 100% 55%;
+    --ring: 48 96% 61%;
 
     --success: 142 76% 45%;
     --success-foreground: 210 11% 96%;
@@ -98,7 +98,7 @@ All colors MUST be HSL.
     --warning: 48 96% 60%;
     --warning-foreground: 210 11% 12%;
     
-    --hero-gradient: linear-gradient(135deg, hsl(210 11% 15%) 0%, hsl(210 11% 10%) 50%, hsl(28 100% 50% / 0.15) 100%);
+    --hero-gradient: linear-gradient(135deg, hsl(210 11% 15%) 0%, hsl(210 11% 10%) 50%, hsl(48 96% 61% / 0.15) 100%);
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
