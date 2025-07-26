@@ -97,29 +97,31 @@ export async function getBuiltWithTechnologies(domain: string): Promise<Technolo
     const BUILTWITH_API_KEY = Deno.env.get('BUILTWITH_API_KEY');
     
     if (!BUILTWITH_API_KEY) {
-      console.log('Builtwith API key not found in secrets, skipping Builtwith detection');
+      console.log('BuiltWith API key not configured, skipping BuiltWith detection');
       return [];
     }
 
-    // Add cache busting timestamp and random delay
-    const timestamp = Date.now();
-    const randomDelay = Math.floor(Math.random() * 1000) + 500; // 500-1500ms delay
-    await new Promise(resolve => setTimeout(resolve, randomDelay));
+    console.log(`Calling BuiltWith API for domain: ${domain}`);
     
-    const apiUrl = `https://api.builtwith.com/free1/api.json?KEY=${BUILTWITH_API_KEY}&LOOKUP=${encodeURIComponent(domain)}&t=${timestamp}`;
+    const apiUrl = `https://api.builtwith.com/free1/api.json?KEY=${BUILTWITH_API_KEY}&LOOKUP=${encodeURIComponent(domain)}`;
     
-    console.log(`Calling Builtwith API for domain: ${domain} with timestamp: ${timestamp}`);
-    const response = await fetch(apiUrl);
+    const response = await fetch(apiUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Website-Analyzer/1.0)',
+        'Accept': 'application/json',
+      },
+      signal: AbortSignal.timeout(15000) // 15 second timeout
+    });
     
     if (!response.ok) {
-      console.error(`Builtwith API error: ${response.status}`);
+      console.error(`BuiltWith API error: ${response.status}`);
       return [];
     }
 
     const data = await response.json();
     const technologies: Technology[] = [];
 
-    // Parse Builtwith results
+    // Parse BuiltWith results
     if (data.Results && data.Results[0] && data.Results[0].Result) {
       const result = data.Results[0].Result;
       
@@ -130,7 +132,7 @@ export async function getBuiltWithTechnologies(domain: string): Promise<Technolo
           categoryData.forEach((tech: any) => {
             technologies.push({
               name: tech.Name || tech.Tag || 'Unknown',
-              confidence: 90,
+              confidence: 85,
               version: tech.Version || undefined,
               category: category.replace(/([A-Z])/g, ' $1').trim()
             });
@@ -139,10 +141,10 @@ export async function getBuiltWithTechnologies(domain: string): Promise<Technolo
       });
     }
 
-    console.log(`Found ${technologies.length} technologies via Builtwith`);
+    console.log(`Found ${technologies.length} technologies via BuiltWith`);
     return technologies;
   } catch (error) {
-    console.error('Builtwith API call failed:', error);
+    console.error('BuiltWith API call failed:', error instanceof Error ? error.message : 'Unknown error');
     return [];
   }
 }
@@ -157,58 +159,65 @@ export function detectTechnologiesCustom(html: string, headers: Record<string, s
     const version = extractWordPressVersion(html);
     technologies.push({
       name: 'WordPress',
-      confidence: 95,
+      confidence: 90,
       version,
       category: 'CMS'
     });
   }
 
   // JavaScript frameworks/libraries
-  if (htmlLower.includes('react')) {
-    technologies.push({ name: 'React', confidence: 80, category: 'JavaScript frameworks' });
+  if (htmlLower.includes('react') || htmlLower.includes('_react')) {
+    technologies.push({ name: 'React', confidence: 75, category: 'JavaScript frameworks' });
   }
-  if (htmlLower.includes('vue')) {
-    technologies.push({ name: 'Vue.js', confidence: 80, category: 'JavaScript frameworks' });
+  if (htmlLower.includes('vue') || htmlLower.includes('vuejs')) {
+    technologies.push({ name: 'Vue.js', confidence: 75, category: 'JavaScript frameworks' });
   }
-  if (htmlLower.includes('angular')) {
-    technologies.push({ name: 'Angular', confidence: 80, category: 'JavaScript frameworks' });
+  if (htmlLower.includes('angular') || htmlLower.includes('ng-')) {
+    technologies.push({ name: 'Angular', confidence: 75, category: 'JavaScript frameworks' });
   }
-  if (htmlLower.includes('jquery')) {
-    technologies.push({ name: 'jQuery', confidence: 90, category: 'JavaScript libraries' });
+  if (htmlLower.includes('jquery') || htmlLower.includes('jquery.min.js')) {
+    technologies.push({ name: 'jQuery', confidence: 85, category: 'JavaScript libraries' });
   }
 
   // CSS frameworks
-  if (htmlLower.includes('bootstrap')) {
-    technologies.push({ name: 'Bootstrap', confidence: 85, category: 'CSS frameworks' });
+  if (htmlLower.includes('bootstrap') || htmlLower.includes('bootstrap.min.css')) {
+    technologies.push({ name: 'Bootstrap', confidence: 80, category: 'CSS frameworks' });
   }
-  if (htmlLower.includes('tailwind')) {
-    technologies.push({ name: 'Tailwind CSS', confidence: 85, category: 'CSS frameworks' });
+  if (htmlLower.includes('tailwind') || htmlLower.includes('tailwindcss')) {
+    technologies.push({ name: 'Tailwind CSS', confidence: 80, category: 'CSS frameworks' });
   }
 
   // Analytics
   if (htmlLower.includes('google-analytics') || htmlLower.includes('gtag')) {
-    technologies.push({ name: 'Google Analytics', confidence: 95, category: 'Analytics' });
+    technologies.push({ name: 'Google Analytics', confidence: 90, category: 'Analytics' });
+  }
+  
+  if (htmlLower.includes('gtm') || htmlLower.includes('googletagmanager')) {
+    technologies.push({ name: 'Google Tag Manager', confidence: 85, category: 'Tag managers' });
   }
 
   // CDN detection
   if (detectCDN(html, headers)) {
-    technologies.push({ name: 'CDN', confidence: 90, category: 'CDN' });
+    technologies.push({ name: 'Content Delivery Network', confidence: 80, category: 'CDN' });
   }
 
   return technologies;
 }
 
-// Merge technologies from different sources, removing duplicates
+// Merge technologies from different sources, removing duplicates  
 export function mergeTechnologies(builtwithTech: Technology[], customTech: Technology[]): Technology[] {
   const merged = [...builtwithTech];
   const existingNames = new Set(builtwithTech.map(tech => tech.name.toLowerCase()));
 
-  // Add custom technologies that aren't already detected by Builtwith
+  // Add custom technologies that aren't already detected by BuiltWith
   customTech.forEach(tech => {
     if (!existingNames.has(tech.name.toLowerCase())) {
       merged.push(tech);
     }
   });
 
-  return merged;
+  // Sort by confidence and limit to reasonable number
+  return merged
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, 20); // Limit to top 20 technologies
 }

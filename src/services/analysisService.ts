@@ -6,6 +6,8 @@ import { recommendationsService } from './recommendations/recommendationsService
 class AnalysisService {
   async analyzeWebsite(url: string): Promise<AnalysisResult> {
     try {
+      console.log(`Starting analysis for: ${url}`);
+      
       // Use Supabase Edge Function for enhanced analysis
       const { supabase } = await import('@/integrations/supabase/client');
       
@@ -14,20 +16,28 @@ class AnalysisService {
       });
 
       if (error) {
-        console.error('Edge function error:', error);
+        console.error('Supabase Edge Function error:', error);
         // Fallback to client-side analysis if Edge Function fails
         return this.fallbackAnalysis(url);
       }
 
+      if (!data) {
+        console.error('No data returned from Edge Function');
+        return this.fallbackAnalysis(url);
+      }
+
+      console.log('Analysis completed successfully via Edge Function');
       return data as AnalysisResult;
     } catch (error) {
-      console.error('Analysis failed:', error);
+      console.error('Analysis service error:', error);
       // Fallback to client-side analysis
       return this.fallbackAnalysis(url);
     }
   }
 
   private async fallbackAnalysis(url: string): Promise<AnalysisResult> {
+    console.log(`Running fallback analysis for: ${url}`);
+    
     try {
       // Always run WordPress detection
       const wordpressData = await wordPressDetectionService.detectWordPress(url);
@@ -36,6 +46,7 @@ class AnalysisService {
       let pageSpeedData = null;
       try {
         pageSpeedData = await pageSpeedService.getPageSpeedInsights(url);
+        console.log('PageSpeed data retrieved successfully');
       } catch (error) {
         console.warn('PageSpeed API unavailable, using estimated scores:', error);
       }
@@ -47,8 +58,10 @@ class AnalysisService {
         ? Math.round((pageSpeedData.lighthouseResult.categories.performance.score || 0) * 100)
         : recommendationsService.estimatePerformanceScore(wordpressData);
       
-      const mobileScore = performanceScore - Math.floor(Math.random() * 15 + 5);
+      const mobileScore = Math.max(20, performanceScore - Math.floor(Math.random() * 15 + 10));
 
+      console.log(`Fallback analysis completed - Performance: ${performanceScore}, Mobile: ${mobileScore}`);
+      
       return {
         url,
         performanceScore,
@@ -61,7 +74,7 @@ class AnalysisService {
       };
     } catch (error) {
       console.error('Fallback analysis failed:', error);
-      throw new Error('Failed to analyze website. Please check the URL and try again.');
+      throw new Error('Unable to analyze the website. Please verify the URL is accessible and try again.');
     }
   }
 

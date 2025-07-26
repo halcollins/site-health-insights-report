@@ -8,70 +8,68 @@ export interface PerformanceScores {
 
 // PageSpeed Insights API integration
 export async function getPageSpeedScores(normalizedUrl: string): Promise<PerformanceScores> {
-  let performanceScore = 75; // Fallback score
-  let mobileScore = 65; // Fallback score
+  let performanceScore = 65; // More realistic fallback score
+  let mobileScore = 55; // More realistic fallback score
   let usingRealData = false;
   
   // Get Google PageSpeed API key from Supabase secrets
   const GOOGLE_API_KEY = Deno.env.get('GOOGLE_SPEED_TEST_KEY');
-  console.log(`Google API Key present: ${GOOGLE_API_KEY ? 'YES' : 'NO'}`);
+  console.log(`Google PageSpeed API Key available: ${GOOGLE_API_KEY ? 'YES' : 'NO'}`);
   
   if (GOOGLE_API_KEY) {
     console.log(`Starting PageSpeed analysis for ${normalizedUrl}`);
     
     // Helper function to make PageSpeed API calls with enhanced error handling
-    const fetchPageSpeedWithRetry = async (strategy: 'desktop' | 'mobile', maxRetries = 2): Promise<{ score: number | null, error?: string }> => {
+    const fetchPageSpeedWithRetry = async (strategy: 'desktop' | 'mobile', maxRetries = 3): Promise<{ score: number | null, error?: string }> => {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           console.log(`Attempt ${attempt}/${maxRetries} for ${strategy} strategy`);
           
           const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(normalizedUrl)}&category=performance&strategy=${strategy}&key=${GOOGLE_API_KEY}`;
-          console.log(`API URL constructed for ${strategy}`);
           
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
           
           const response = await fetch(apiUrl, {
             headers: {
-              'User-Agent': 'Website-Analyzer/1.0',
+              'User-Agent': 'Mozilla/5.0 (compatible; Website-Analyzer/1.0)',
               'Accept': 'application/json',
             },
             signal: controller.signal
           });
           
           clearTimeout(timeoutId);
-          console.log(`${strategy} API response - Status: ${response.status}, OK: ${response.ok}`);
+          console.log(`${strategy} PageSpeed API response: ${response.status}`);
           
           if (response.ok) {
             const data = await response.json();
-            console.log(`${strategy} API response data keys:`, Object.keys(data));
             
             if (data.lighthouseResult?.categories?.performance?.score !== undefined) {
               const score = Math.round(data.lighthouseResult.categories.performance.score * 100);
               console.log(`✅ ${strategy} PageSpeed score: ${score}`);
               return { score };
             } else {
-              console.error(`❌ ${strategy} API response missing score data`);
+              console.warn(`${strategy} API response missing performance score`);
               return { score: null, error: 'Missing score data in response' };
             }
           } else if (response.status === 429) {
-            const waitTime = Math.min(Math.pow(2, attempt) * 1000, 8000); // Cap at 8 seconds
-            console.log(`⏳ Rate limited on attempt ${attempt}, waiting ${waitTime}ms`);
+            const waitTime = Math.min(Math.pow(2, attempt) * 2000, 10000); // Exponential backoff, cap at 10 seconds
+            console.log(`Rate limited on attempt ${attempt}, waiting ${waitTime}ms`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
             continue;
           } else if (response.status === 400) {
             const errorText = await response.text();
-            console.error(`❌ ${strategy} API bad request (400):`, errorText);
+            console.error(`${strategy} API bad request:`, errorText.substring(0, 200));
             return { score: null, error: `Bad request: ${errorText}` };
           } else {
             const errorText = await response.text();
-            console.error(`❌ ${strategy} API error ${response.status}:`, errorText);
+            console.error(`${strategy} API error ${response.status}:`, errorText.substring(0, 200));
             if (attempt === maxRetries) {
               return { score: null, error: `HTTP ${response.status}: ${errorText}` };
             }
           }
         } catch (error) {
-          console.error(`❌ ${strategy} attempt ${attempt} failed:`, error instanceof Error ? error.message : 'Unknown error');
+          console.error(`${strategy} attempt ${attempt} failed:`, error instanceof Error ? error.message : 'Unknown error');
           if (error instanceof Error && error.name === 'AbortError') {
             console.error(`${strategy} request timed out`);
             return { score: null, error: 'Request timeout' };
@@ -82,8 +80,7 @@ export async function getPageSpeedScores(normalizedUrl: string): Promise<Perform
           }
           
           // Wait before retry
-          const waitTime = Math.min(Math.pow(2, attempt) * 1000, 5000);
-          console.log(`Waiting ${waitTime}ms before retry...`);
+          const waitTime = Math.min(Math.pow(2, attempt) * 1500, 6000);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
@@ -91,19 +88,19 @@ export async function getPageSpeedScores(normalizedUrl: string): Promise<Perform
     };
     
     try {
-      console.log('🚀 Starting parallel PageSpeed API calls...');
+      console.log('Starting PageSpeed API calls...');
       
-      // Fetch both scores with staggered timing to avoid rate limits 
+      // Fetch desktop score first
       const desktopResult = await fetchPageSpeedWithRetry('desktop');
       
-      // Small delay between requests
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Delay between requests to avoid rate limits
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       const mobileResult = await fetchPageSpeedWithRetry('mobile');
       
-      console.log('📊 PageSpeed API Results:');
-      console.log(`Desktop: ${desktopResult.score !== null ? desktopResult.score : `Failed - ${desktopResult.error}`}`);
-      console.log(`Mobile: ${mobileResult.score !== null ? mobileResult.score : `Failed - ${mobileResult.error}`}`);
+      console.log('PageSpeed API Results:');
+      console.log(`Desktop: ${desktopResult.score !== null ? desktopResult.score : 'Failed'}`);
+      console.log(`Mobile: ${mobileResult.score !== null ? mobileResult.score : 'Failed'}`);
       
       // Use real data if available
       if (desktopResult.score !== null) {
@@ -117,17 +114,16 @@ export async function getPageSpeedScores(normalizedUrl: string): Promise<Perform
       }
       
       if (usingRealData) {
-        console.log(`✅ Using REAL PageSpeed data - Desktop: ${performanceScore}, Mobile: ${mobileScore}`);
+        console.log(`Using real PageSpeed data - Desktop: ${performanceScore}, Mobile: ${mobileScore}`);
       } else {
-        console.log(`⚠️ All PageSpeed API calls failed, using estimated scores`);
-        console.log(`Errors - Desktop: ${desktopResult.error}, Mobile: ${mobileResult.error}`);
+        console.log('PageSpeed API calls failed, using estimated scores');
       }
       
     } catch (error) {
-      console.error('❌ PageSpeed API batch request failed:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('PageSpeed API request failed:', error instanceof Error ? error.message : 'Unknown error');
     }
   } else {
-    console.log('⚠️ No Google API key found in secrets, using estimated scores');
+    console.log('No Google PageSpeed API key configured, using estimated scores');
   }
 
   return { performanceScore, mobileScore, usingRealData };
@@ -141,65 +137,53 @@ export function calculateEstimatedScores(analysisData: {
   plugins: number;
   isWordPress: boolean;
 }): { performanceScore: number; mobileScore: number } {
-  console.log('🔢 Computing realistic estimated performance scores based on technical analysis');
+  console.log('Computing estimated performance scores based on technical analysis');
   
-  // Start with much lower base score to match real-world PageSpeed distributions
-  let baseScore = 45; // Much more realistic baseline
+  // Start with realistic base score
+  let baseScore = 50;
   
-  // Smaller, more realistic positive factors
+  // Positive factors
   if (analysisData.hasSSL) {
-    baseScore += 3;
-    console.log('✅ SSL enabled: +3 points');
+    baseScore += 5;
   }
   if (analysisData.hasCDN) {
-    baseScore += 6;
-    console.log('✅ CDN detected: +6 points');
+    baseScore += 8;
   }
   if (analysisData.caching === 'enabled') {
-    baseScore += 8;
-    console.log('✅ Caching enabled: +8 points');
+    baseScore += 10;
   } else if (analysisData.caching === 'partial') {
-    baseScore += 4;
-    console.log('⚠️ Partial caching: +4 points');
+    baseScore += 5;
   }
   if (analysisData.imageOptimization === 'good') {
-    baseScore += 6;
-    console.log('✅ Good image optimization: +6 points');
+    baseScore += 8;
   } else if (analysisData.imageOptimization === 'needs-improvement') {
-    baseScore += 2;
-    console.log('⚠️ Image optimization needs work: +2 points');
+    baseScore += 3;
   }
   
-  // Stronger negative impacts to reflect reality
+  // Negative factors
   if (analysisData.plugins > 25) {
-    baseScore -= 20;
-    console.log(`❌ Too many plugins (${analysisData.plugins}): -20 points`);
+    baseScore -= 15;
   } else if (analysisData.plugins > 15) {
-    baseScore -= 12;
-    console.log(`⚠️ Many plugins (${analysisData.plugins}): -12 points`);
+    baseScore -= 10;
   } else if (analysisData.plugins > 10) {
-    baseScore -= 8;
-    console.log(`⚠️ Several plugins (${analysisData.plugins}): -8 points`);
+    baseScore -= 5;
   }
   
-  // WordPress penalty reflects real performance impact
+  // WordPress penalty
   if (analysisData.isWordPress) {
-    baseScore -= 12; // WordPress sites typically score much lower
-    console.log('⚠️ WordPress site: -12 points');
+    baseScore -= 8;
   }
   
-  // Additional realistic penalties
+  // Additional penalties
   if (!analysisData.hasCDN && !analysisData.hasSSL) {
-    baseScore -= 8; // Multiple basic issues compound
-    console.log('❌ Missing basic optimizations: -8 points');
+    baseScore -= 5;
   }
   
-  // Keep scores in realistic ranges - PageSpeed scores are typically much lower
-  const performanceScore = Math.min(Math.max(baseScore, 20), 75); // Cap much lower
-  const mobileScore = Math.max(15, performanceScore - Math.floor(Math.random() * 8 + 12)); // Mobile typically 12-20 points lower
+  // Keep scores in realistic ranges
+  const performanceScore = Math.min(Math.max(baseScore, 25), 85);
+  const mobileScore = Math.max(20, performanceScore - Math.floor(Math.random() * 10 + 10));
   
-  console.log(`📊 Realistic estimated scores - Desktop: ${performanceScore}, Mobile: ${mobileScore}`);
-  console.log('⚠️ Using estimated scores - results may differ from actual PageSpeed testing');
+  console.log(`Estimated scores - Desktop: ${performanceScore}, Mobile: ${mobileScore}`);
 
   return { performanceScore, mobileScore };
 }

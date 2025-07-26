@@ -5,10 +5,10 @@ const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 // Security configuration
 export const SECURITY_CONFIG = {
-  MAX_REQUESTS_PER_MINUTE: 10,
+  MAX_REQUESTS_PER_MINUTE: 15,
   MAX_URL_LENGTH: 2048,
   ALLOWED_PROTOCOLS: ['http:', 'https:'],
-  BLOCKED_DOMAINS: ['localhost', '127.0.0.1', '0.0.0.0', '169.254.169.254'], // Block local/internal IPs
+  BLOCKED_DOMAINS: ['localhost', '127.0.0.1', '0.0.0.0', '10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.', '192.168.', '169.254.169.254'], // Block local/internal IPs
   BLOCKED_TLDS: ['.local', '.internal'],
 };
 
@@ -30,7 +30,9 @@ export function validateAndSanitizeUrl(url: string): { isValid: boolean; normali
 
     // Check for blocked domains/IPs
     const hostname = urlObj.hostname.toLowerCase();
-    if (SECURITY_CONFIG.BLOCKED_DOMAINS.some(blocked => hostname.includes(blocked))) {
+    if (SECURITY_CONFIG.BLOCKED_DOMAINS.some(blocked => 
+      hostname === blocked || hostname.includes(blocked)
+    )) {
       return { isValid: false, error: 'Access to internal/local resources not allowed' };
     }
 
@@ -43,12 +45,19 @@ export function validateAndSanitizeUrl(url: string): { isValid: boolean; normali
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
     if (ipRegex.test(hostname)) {
       const parts = hostname.split('.').map(Number);
+      
+      // Validate IP parts are in valid range
+      if (parts.some(part => part < 0 || part > 255)) {
+        return { isValid: false, error: 'Invalid IP address format' };
+      }
+      
       // Block private IP ranges: 10.x.x.x, 172.16-31.x.x, 192.168.x.x
       if (
         parts[0] === 10 ||
         (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
         (parts[0] === 192 && parts[1] === 168) ||
-        (parts[0] === 127) // localhost
+        (parts[0] === 127) || // localhost
+        (parts[0] === 169 && parts[1] === 254) // link-local
       ) {
         return { isValid: false, error: 'Access to private IP ranges not allowed' };
       }
@@ -62,7 +71,7 @@ export function validateAndSanitizeUrl(url: string): { isValid: boolean; normali
 
 export function checkRateLimit(clientIP: string): { allowed: boolean; remaining?: number } {
   const now = Date.now();
-  const key = clientIP;
+  const key = clientIP.substring(0, 15); // Truncate IP for privacy
   const limit = rateLimitStore.get(key);
 
   // Reset if window expired
