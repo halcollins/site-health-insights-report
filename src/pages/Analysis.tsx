@@ -9,7 +9,7 @@ interface AnalysisResult {
   isWordPress: boolean;
   wpVersion?: string;
   theme?: string;
-  plugins?: number;
+  /*plugins?: number;*/
   hasSSL: boolean;
   hasCDN: boolean;
   imageOptimization: 'good' | 'needs-improvement' | 'poor';
