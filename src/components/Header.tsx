@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
+import ThemeToggle from "./ThemeToggle";
 
 const Header = () => {
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-center">
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link to="/" className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <span className="text-primary-foreground font-bold text-lg">W</span>
@@ -13,6 +14,7 @@ const Header = () => {
             <span className="text-primary font-bold text-xl ml-1">Analyzer</span>
           </div>
         </Link>
+        <ThemeToggle />
       </div>
     </header>
   );
