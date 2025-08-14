@@ -7,14 +7,120 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analysis_reports: {
+        Row: {
+          analysis_timestamp: string
+          caching: string | null
+          confidence: string | null
+          created_at: string
+          data_source: string | null
+          has_cdn: boolean | null
+          has_ssl: boolean | null
+          id: string
+          image_optimization: string | null
+          is_wordpress: boolean | null
+          lead_id: string
+          mobile_score: number | null
+          performance_score: number | null
+          plugins: number | null
+          recommendations: Json | null
+          risk_level: string | null
+          technologies: Json | null
+          theme: string | null
+          url: string
+          wp_version: string | null
+        }
+        Insert: {
+          analysis_timestamp?: string
+          caching?: string | null
+          confidence?: string | null
+          created_at?: string
+          data_source?: string | null
+          has_cdn?: boolean | null
+          has_ssl?: boolean | null
+          id?: string
+          image_optimization?: string | null
+          is_wordpress?: boolean | null
+          lead_id: string
+          mobile_score?: number | null
+          performance_score?: number | null
+          plugins?: number | null
+          recommendations?: Json | null
+          risk_level?: string | null
+          technologies?: Json | null
+          theme?: string | null
+          url: string
+          wp_version?: string | null
+        }
+        Update: {
+          analysis_timestamp?: string
+          caching?: string | null
+          confidence?: string | null
+          created_at?: string
+          data_source?: string | null
+          has_cdn?: boolean | null
+          has_ssl?: boolean | null
+          id?: string
+          image_optimization?: string | null
+          is_wordpress?: boolean | null
+          lead_id?: string
+          mobile_score?: number | null
+          performance_score?: number | null
+          plugins?: number | null
+          recommendations?: Json | null
+          risk_level?: string | null
+          technologies?: Json | null
+          theme?: string | null
+          url?: string
+          wp_version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_reports_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          updated_at: string
+          website_url: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          updated_at?: string
+          website_url: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          website_url?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
