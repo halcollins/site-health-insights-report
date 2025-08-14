@@ -9,7 +9,7 @@ const Header = () => {
             <span className="text-primary-foreground font-bold text-lg">W</span>
           </div>
           <div>
-            <span className="text-foreground font-bold text-xl">WordPress</span>
+            <span className="text-foreground font-bold text-xl">Website</span>
             <span className="text-primary font-bold text-xl ml-1">Analyzer</span>
           </div>
         </Link>
