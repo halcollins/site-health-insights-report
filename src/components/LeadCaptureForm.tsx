@@ -85,6 +85,7 @@ const LeadCaptureForm = ({ onSubmit, isLoading = false }: LeadCaptureFormProps) 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
       {/* Header Section */}
+      <Card className="p-8 bg-card/50 backdrop-blur-sm border-border">
       <div className="text-center space-y-4">
         <div className="flex justify-center">
           <div className="p-3 bg-destructive/10 rounded-full">
@@ -124,6 +125,7 @@ const LeadCaptureForm = ({ onSubmit, isLoading = false }: LeadCaptureFormProps) 
           </div>
         </div>
       </div>
+      </Card>
 
       {/* Lead Capture Form */}
       <Card className="p-8 bg-card/50 backdrop-blur-sm border-border">
