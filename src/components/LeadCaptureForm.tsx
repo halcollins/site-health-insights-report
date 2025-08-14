@@ -99,6 +99,7 @@ const LeadCaptureForm = ({ onSubmit, isLoading = false }: LeadCaptureFormProps) 
           Get a comprehensive security audit that reveals critical vulnerabilities, 
           performance issues, and compliance gaps that could be costing your business.
         </p>
+        <br />
       </div>
 
       {/* Risk Indicators */}
