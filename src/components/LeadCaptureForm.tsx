@@ -103,7 +103,7 @@ const LeadCaptureForm = ({ onSubmit, isLoading = false }: LeadCaptureFormProps) 
       {/* Risk Indicators */}
       <div className="grid md:grid-cols-3 gap-4 mb-8">
         <div className="flex items-center space-x-3 p-4 bg-destructive/5 rounded-lg border border-destructive/20">
-          <AlertTriangle className="w-6 h-6 text-destructive" />
+          <AlertTriangle className="w-6 h-6 text-orange-600" />
           <div>
             <h3 className="font-semibold text-sm">Security Vulnerabilities</h3>
             <p className="text-xs text-muted-foreground">Malware & hacking risks</p>
@@ -117,7 +117,7 @@ const LeadCaptureForm = ({ onSubmit, isLoading = false }: LeadCaptureFormProps) 
           </div>
         </div>
         <div className="flex items-center space-x-3 p-4 bg-destructive/5 rounded-lg border border-destructive/20">
-          <Search className="w-6 h-6 text-blue-600" />
+          <Search className="w-6 h-6 text-orange-600" />
           <div>
             <h3 className="font-semibold text-sm">SEO Penalties</h3>
             <p className="text-xs text-muted-foreground">Search ranking threats</p>
