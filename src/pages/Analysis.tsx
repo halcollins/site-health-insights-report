@@ -9,7 +9,7 @@ interface AnalysisResult {
   isWordPress: boolean;
   wpVersion?: string;
   theme?: string;
-  /*plugins?: number;*/
+  plugins?: number;
   hasSSL: boolean;
   hasCDN: boolean;
   imageOptimization: 'good' | 'needs-improvement' | 'poor';
@@ -25,6 +25,12 @@ interface AnalysisResult {
   dataSource: 'real' | 'estimated';
   confidence: 'high' | 'medium' | 'low';
   analysisTimestamp: string;
+  leadInfo?: {
+    name: string;
+    email: string;
+    company?: string;
+  };
+  riskLevel?: 'critical' | 'high' | 'medium' | 'low';
 }
 
 const Analysis = () => {

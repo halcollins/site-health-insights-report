@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, AlertTriangle, XCircle, Globe, Shield, Zap, Image, Server, TrendingUp, Cpu } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, Globe, Shield, Zap, Image, Server, TrendingUp, Cpu, FileText, Download } from "lucide-react";
 
 interface AnalysisResult {
   url: string;
@@ -25,6 +25,12 @@ interface AnalysisResult {
   dataSource: 'real' | 'estimated';
   confidence: 'high' | 'medium' | 'low';
   analysisTimestamp: string;
+  leadInfo?: {
+    name: string;
+    email: string;
+    company?: string;
+  };
+  riskLevel?: 'critical' | 'high' | 'medium' | 'low';
 }
 
 interface AnalysisResultsProps {
@@ -80,23 +86,54 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
     );
   };
 
+  const getRiskLevelBadge = (riskLevel?: string) => {
+    if (!riskLevel) return null;
+    
+    const riskColors = {
+      critical: "border-destructive text-destructive bg-destructive/10",
+      high: "border-orange-500 text-orange-600 bg-orange-50",
+      medium: "border-yellow-500 text-yellow-600 bg-yellow-50",
+      low: "border-green-500 text-green-600 bg-green-50"
+    };
+    
+    return (
+      <Badge className={riskColors[riskLevel as keyof typeof riskColors]}>
+        {riskLevel.toUpperCase()} RISK
+      </Badge>
+    );
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
       <Card className="bg-card/50 backdrop-blur-sm border-border">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl text-foreground">
-                Analysis Results
-              </CardTitle>
-              <p className="text-muted-foreground mt-2">
-                Comprehensive audit for <span className="text-primary font-medium">{result.url}</span>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-3">
+                <CardTitle className="text-2xl text-foreground">
+                  Website Security Report
+                </CardTitle>
+                {result.riskLevel && getRiskLevelBadge(result.riskLevel)}
+              </div>
+              {result.leadInfo && (
+                <p className="text-sm text-muted-foreground">
+                  Report for {result.leadInfo.name} {result.leadInfo.company && `• ${result.leadInfo.company}`}
+                </p>
+              )}
+              <p className="text-muted-foreground">
+                Security and performance analysis for <span className="text-primary font-medium">{result.url}</span>
               </p>
             </div>
-            <Button onClick={onNewAnalysis} variant="outline">
-              Analyze Another Site
-            </Button>
+            <div className="flex space-x-2">
+              <Button variant="outline" className="flex items-center space-x-2">
+                <Download className="w-4 h-4" />
+                <span>Download PDF</span>
+              </Button>
+              <Button onClick={onNewAnalysis} variant="outline">
+                Analyze Another Site
+              </Button>
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -215,12 +252,12 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Zap className="w-5 h-5 text-primary" />
-              <span>Performance</span>
+              <span>Revenue Impact Assessment</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-foreground">Desktop Score</span>
+              <span className="text-foreground">Desktop Performance</span>
               <div className="flex items-center space-x-2">
                 {getScoreIcon(result.performanceScore)}
                 <span className={`font-bold ${getScoreColor(result.performanceScore)}`}>
@@ -229,7 +266,7 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-foreground">Mobile Score</span>
+              <span className="text-foreground">Mobile Conversion Risk</span>
               <div className="flex items-center space-x-2">
                 {getScoreIcon(result.mobileScore)}
                 <span className={`font-bold ${getScoreColor(result.mobileScore)}`}>
@@ -237,6 +274,13 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
                 </span>
               </div>
             </div>
+            {result.performanceScore < 70 && (
+              <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <p className="text-sm text-orange-700">
+                  ⚠️ Performance issues may be costing you up to 25% of potential conversions
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -244,7 +288,7 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Shield className="w-5 h-5 text-primary" />
-              <span>Security & Optimization</span>
+              <span>Security Vulnerabilities</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -253,9 +297,16 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
               {getStatusBadge(result.hasSSL)}
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-foreground">CDN Usage</span>
+              <span className="text-foreground">CDN Protection</span>
               {getStatusBadge(result.hasCDN)}
             </div>
+            {!result.hasSSL && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-700">
+                  🚨 Missing SSL exposes customer data and hurts search rankings
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -280,17 +331,25 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
         </CardContent>
       </Card>
 
-      {/* Recommendations */}
+      {/* Critical Actions Required */}
       <Card className="bg-card/50 backdrop-blur-sm border-border">
         <CardHeader>
-          <CardTitle className="text-foreground">Recommendations</CardTitle>
+          <CardTitle className="text-foreground">Critical Actions Required</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Priority fixes to protect your business and improve conversions
+          </p>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-3">
+          <ul className="space-y-4">
             {result.recommendations.map((rec, index) => (
-              <li key={index} className="flex items-start space-x-3">
-                <AlertTriangle className="w-4 h-4 text-warning mt-1 flex-shrink-0" />
-                <span className="text-foreground">{rec}</span>
+              <li key={index} className="flex items-start space-x-3 p-3 border border-orange-200 rounded-lg bg-orange-50">
+                <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="text-foreground font-medium">{rec}</span>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Action item #{index + 1} - Address this to reduce business risk
+                  </p>
+                </div>
               </li>
             ))}
           </ul>
@@ -298,26 +357,36 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
       </Card>
 
       {/* CTA Section */}
-      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-        <CardContent className="p-8 text-center space-y-4">
+      <Card className="bg-gradient-to-r from-destructive/10 to-orange-100 border-orange-200">
+        <CardContent className="p-8 text-center space-y-6">
           <h3 className="text-2xl font-bold text-foreground">
-            Need Help Optimizing Your WordPress Site?
+            Don't Let These Issues Cost You Business
           </h3>
-          <p className="text-muted-foreground text-lg">
-            Our WordPress experts can help you implement these recommendations and boost your site's performance, security, and SEO.
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Every day these security vulnerabilities and performance issues remain unfixed, 
+            you're losing potential customers and putting your business at risk.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button size="lg" variant="outline" className="bg-primary hover:bg-primary/60 text-primary-foreground">
-              <a href="mailto:hal.webtech@gmail.com?subject=Schedule Free Consultation">
-                Schedule Free Consultation
-              </a>
-            </Button>
-            <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/40">
-              <a href="mailto:hal.webtech@gmail.com?subject=Contact Us">
-                Contact Us
-              </a>
-            </Button>
+          <div className="bg-card/80 border border-orange-200 rounded-lg p-6 max-w-md mx-auto">
+            <h4 className="font-semibold text-foreground mb-2">Free Security Consultation</h4>
+            <p className="text-sm text-muted-foreground mb-4">
+              Get a personalized action plan to fix these critical issues
+            </p>
+            <div className="flex flex-col gap-3">
+              <Button size="lg" className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+                <a href="mailto:hal.webtech@gmail.com?subject=URGENT: Security Issues Found - Schedule Consultation">
+                  Fix These Issues Now
+                </a>
+              </Button>
+              <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10">
+                <a href="mailto:hal.webtech@gmail.com?subject=Question About Security Report">
+                  Ask Questions About This Report
+                </a>
+              </Button>
+            </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            We'll prioritize your most critical security and performance issues
+          </p>
         </CardContent>
       </Card>
     </div>

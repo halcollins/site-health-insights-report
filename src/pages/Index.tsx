@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
-import UrlAnalysisForm from "@/components/UrlAnalysisForm";
+import LeadCaptureForm from "@/components/LeadCaptureForm";
 import heroImage from "@/assets/hero-bg.jpg";
 import { analysisService } from "@/services/analysisService";
+import { leadService, type LeadData } from "@/services/leadService";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -11,16 +12,61 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const performAnalysis = async (url: string) => {
+  const performAnalysis = async (leadData: LeadData) => {
     setIsAnalyzing(true);
     
     try {
-      const result = await analysisService.analyzeWebsite(url);
+      console.log("Creating lead and starting analysis for:", leadData.websiteUrl);
+      
+      // Create lead in database
+      const lead = await leadService.createLead(leadData);
+      console.log("Lead created:", lead);
+      
+      // Perform website analysis
+      const result = await analysisService.analyzeWebsite(leadData.websiteUrl);
+      console.log("Analysis completed:", result);
+      
+      // Calculate risk level
+      const riskLevel = leadService.calculateRiskLevel(result);
+      
+      // Create analysis report in database
+      const reportData = {
+        leadId: lead.id,
+        url: result.url,
+        performanceScore: result.performanceScore,
+        mobileScore: result.mobileScore,
+        isWordpress: result.isWordPress,
+        wpVersion: result.wpVersion,
+        theme: result.theme,
+        plugins: result.plugins,
+        hasSSL: result.hasSSL,
+        hasCDN: result.hasCDN,
+        imageOptimization: result.imageOptimization,
+        caching: result.caching,
+        recommendations: result.recommendations,
+        technologies: result.technologies,
+        dataSource: result.dataSource,
+        confidence: result.confidence,
+        riskLevel
+      };
+      
+      await leadService.createAnalysisReport(reportData);
+      
+      // Enhanced result with lead data and risk level
+      const enhancedResult = {
+        ...result,
+        leadInfo: {
+          name: leadData.name,
+          email: leadData.email,
+          company: leadData.company
+        },
+        riskLevel
+      };
       
       // Store result and navigate
-      localStorage.setItem('analysisResult', JSON.stringify(result));
+      localStorage.setItem('analysisResult', JSON.stringify(enhancedResult));
       setIsAnalyzing(false);
-      navigate('/analysis', { state: { result } });
+      navigate('/analysis', { state: { result: enhancedResult } });
     } catch (error) {
       setIsAnalyzing(false);
       toast({
@@ -38,7 +84,7 @@ const Index = () => {
       {/* Hero Section */}
       <section className="relative py-20 lg:py-32 overflow-hidden">
         <div 
-          className="absolute inset-0 bg-hero-gradient opacity-90"
+          className="absolute inset-0 bg-hero-gradient opacity-95"
           style={{ 
             backgroundImage: `url(${heroImage})`, 
             backgroundSize: 'cover', 
@@ -46,69 +92,60 @@ const Index = () => {
             backgroundBlendMode: 'overlay'
           }}
         />
-        <div className="relative container mx-auto px-4 text-center">
-          <div className="max-w-4xl mx-auto space-y-8">
-            <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
-              Optimize Your{" "}
-              <span className="text-primary">WordPress</span>{" "}
-              Website
-            </h1>
-            <div className="bg-background/20 backdrop-blur-md rounded-lg p-6 border border-border/30">
-              <p className="text-xl md:text-2xl text-foreground max-w-3xl mx-auto">
-                Get a comprehensive analysis of your WordPress site's performance, security, and optimization opportunities. Free audit in seconds.
-              </p>
-            </div>
-            
-            <div className="pt-8">
-              <UrlAnalysisForm onAnalyze={performAnalysis} isLoading={isAnalyzing} />
-            </div>
-          </div>
+        <div className="relative container mx-auto px-4">
+          <LeadCaptureForm onSubmit={performAnalysis} isLoading={isAnalyzing} />
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Benefits Section */}
       <section className="py-20 bg-card/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 id="features" className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Complete WordPress Analysis
+              What Your Security Report Reveals
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Our comprehensive audit covers all critical aspects of your WordPress website
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Get a comprehensive analysis that identifies critical business risks and revenue-impacting issues on your website.
             </p>
           </div>
             
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
-                title: "Performance Analysis",
-                description: "Core Web Vitals, page speed, and mobile optimization scores",
-                icon: "⚡"
+                title: "Critical Security Vulnerabilities",
+                description: "Identify malware risks, outdated software, and security gaps that could expose your business to cyber attacks and data breaches.",
+                icon: "🚨",
+                color: "destructive"
               },
               {
-                title: "Security Assessment", 
-                description: "SSL certificates, WordPress version, and vulnerability checks",
-                icon: "🔒"
+                title: "Revenue-Impacting Performance Issues",
+                description: "Discover slow loading pages, mobile optimization problems, and conversion killers that are costing you customers and sales.",
+                icon: "📉",
+                color: "orange"
               },
               {
-                title: "SEO Optimization",
-                description: "Technical SEO factors and search engine visibility",
-                icon: "📈"
+                title: "Search Engine Penalty Risks",
+                description: "Uncover SEO issues, technical problems, and compliance gaps that could trigger Google penalties and tank your rankings.",
+                icon: "📉",
+                color: "blue"
               },
               {
-                title: "Image Optimization",
-                description: "Image compression, format recommendations, and CDN usage",
-                icon: "🖼️"
+                title: "Customer Trust Indicators",
+                description: "Assess SSL certificates, security badges, and trust signals that impact customer confidence and conversion rates.",
+                icon: "🔒",
+                color: "green"
               },
               {
-                title: "Caching Analysis",
-                description: "Server-side and browser caching configuration review",
-                icon: "💾"
+                title: "Competitive Disadvantages",
+                description: "Identify technical weaknesses that put you behind competitors and specific actions to regain your competitive edge.",
+                icon: "⚔️",
+                color: "purple"
               },
               {
-                title: "Plugin Assessment",
-                description: "Active plugins, theme detection, and compatibility checks",
-                icon: "🔌"
+                title: "Actionable Solutions",
+                description: "Get prioritized recommendations with clear next steps to fix critical issues and protect your business.",
+                icon: "🛠️",
+                color: "primary"
               }
             ].map((feature, index) => (
               <div 
