@@ -13,6 +13,7 @@ const Index = () => {
   const { toast } = useToast();
 
   const performAnalysis = async (leadData: LeadData) => {
+    console.log("=== performAnalysis STARTED ===", leadData);
     setIsAnalyzing(true);
     
     try {
