@@ -45,7 +45,7 @@ export const leadService = {
       const insertData = {
         name: leadData.name,
         email: leadData.email,
-        company: leadData.company || null,
+        company: null,
         website_url: leadData.websiteUrl
       };
       

@@ -10,7 +10,6 @@ interface LeadCaptureFormProps {
   onSubmit: (leadData: {
     name: string;
     email: string;
-    company: string;
     websiteUrl: string;
   }) => void;
   isLoading?: boolean;
@@ -20,7 +19,6 @@ const LeadCaptureForm = ({ onSubmit, isLoading = false }: LeadCaptureFormProps) 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    company: "",
     websiteUrl: ""
   });
   const { toast } = useToast();
@@ -173,20 +171,6 @@ const LeadCaptureForm = ({ onSubmit, isLoading = false }: LeadCaptureFormProps) 
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="company" className="text-sm font-medium">
-              Company Name
-            </Label>
-            <Input
-              id="company"
-              type="text"
-              placeholder="Your Company Inc."
-              value={formData.company}
-              onChange={(e) => updateField('company', e.target.value)}
-              className="h-12"
-              disabled={isLoading}
-            />
-          </div>
 
           <div className="space-y-2">
             <Label htmlFor="website" className="text-sm font-medium">

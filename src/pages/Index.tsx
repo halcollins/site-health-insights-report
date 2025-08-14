@@ -58,8 +58,7 @@ const Index = () => {
         ...result,
         leadInfo: {
           name: leadData.name,
-          email: leadData.email,
-          company: leadData.company
+          email: leadData.email
         },
         riskLevel
       };
