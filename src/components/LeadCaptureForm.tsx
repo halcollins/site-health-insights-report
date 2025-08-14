@@ -69,10 +69,15 @@ const LeadCaptureForm = ({ onSubmit, isLoading = false }: LeadCaptureFormProps) 
       ? formData.websiteUrl 
       : `https://${formData.websiteUrl}`;
 
+    console.log("=== FORM SUBMISSION ===", formData);
+    console.log("Normalized URL:", normalizedUrl);
+    
     onSubmit({
       ...formData,
       websiteUrl: normalizedUrl
     });
+    
+    console.log("onSubmit called successfully");
   };
 
   const updateField = (field: keyof typeof formData, value: string) => {
