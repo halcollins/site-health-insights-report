@@ -35,20 +35,28 @@ export interface AnalysisReportData {
 export const leadService = {
   async createLead(leadData: LeadData) {
     try {
+      console.log('Attempting to create lead with data:', leadData);
+      
+      const insertData = {
+        name: leadData.name,
+        email: leadData.email,
+        company: leadData.company || null,
+        website_url: leadData.websiteUrl
+      };
+      
+      console.log('Insert data:', insertData);
+      
       const { data, error } = await supabase
         .from('leads')
-        .insert({
-          name: leadData.name,
-          email: leadData.email,
-          company: leadData.company || null,
-          website_url: leadData.websiteUrl
-        })
+        .insert(insertData)
         .select()
         .single();
 
+      console.log('Supabase response:', { data, error });
+
       if (error) {
         console.error('Error creating lead:', error);
-        throw new Error('Failed to create lead');
+        throw new Error(`Failed to create lead: ${error.message}`);
       }
 
       return data;
