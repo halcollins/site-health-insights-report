@@ -53,9 +53,7 @@ export const leadService = {
       
       const { data, error } = await supabase
         .from('leads')
-        .insert(insertData)
-        .select()
-        .single();
+        .insert(insertData);
 
       console.log('Supabase response:', { data, error });
 
@@ -64,7 +62,16 @@ export const leadService = {
         throw new Error(`Failed to create lead: ${error.message}`);
       }
 
-      return data;
+      // Return a mock lead object since we can't select it back due to RLS
+      return {
+        id: 'temp-id',
+        name: leadData.name,
+        email: leadData.email,
+        company: leadData.company,
+        website_url: leadData.websiteUrl,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
     } catch (error) {
       console.error('Lead service error:', error);
       throw error;
