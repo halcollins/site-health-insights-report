@@ -91,7 +91,7 @@ const LeadCaptureForm = ({ onSubmit, isLoading = false }: LeadCaptureFormProps) 
         <h1 className="text-4xl font-bold text-foreground">
           Free Website Security Checklist
         </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-xl text-foreground max-w-2xl mx-auto">
           Get a comprehensive security audit that reveals critical vulnerabilities, 
           performance issues, and compliance gaps that could be costing your business.
         </p>
