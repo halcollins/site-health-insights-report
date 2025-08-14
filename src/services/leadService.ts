@@ -37,6 +37,11 @@ export const leadService = {
     try {
       console.log('Attempting to create lead with data:', leadData);
       
+      // Check current auth state
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('Current auth session:', session);
+      console.log('Session error:', sessionError);
+      
       const insertData = {
         name: leadData.name,
         email: leadData.email,
