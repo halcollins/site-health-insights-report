@@ -96,8 +96,8 @@ export async function getBuiltWithTechnologies(domain: string): Promise<Technolo
     // Get API key from Supabase secrets
     const BUILTWITH_API_KEY = Deno.env.get('BUILTWITH_API_KEY');
     
-    if (!BUILTWITH_API_KEY) {
-      console.log('BuiltWith API key not configured, skipping BuiltWith detection');
+    if (!BUILTWITH_API_KEY || !BUILTWITH_API_KEY.trim()) {
+      console.log('🔑 BuiltWith API key not configured, skipping BuiltWith detection');
       return [];
     }
 

@@ -14,9 +14,9 @@ export async function getPageSpeedScores(normalizedUrl: string): Promise<Perform
   
   // Get Google PageSpeed API key from Supabase secrets
   const GOOGLE_API_KEY = Deno.env.get('GOOGLE_SPEED_TEST_KEY');
-  console.log(`Google PageSpeed API Key available: ${GOOGLE_API_KEY ? 'YES' : 'NO'}`);
+  console.log(`🔑 Google PageSpeed API Key available: ${GOOGLE_API_KEY ? 'YES' : 'NO'}`);
   
-  if (GOOGLE_API_KEY) {
+  if (GOOGLE_API_KEY && GOOGLE_API_KEY.trim()) {
     console.log(`Starting PageSpeed analysis for ${normalizedUrl}`);
     
     // Helper function to make PageSpeed API calls with enhanced error handling

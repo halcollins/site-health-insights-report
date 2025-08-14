@@ -240,67 +240,141 @@ serve(async (req) => {
 
     console.log(`Content fetched successfully. Length: ${html.length} characters`);
 
-    // Detect technologies using both Builtwith API and custom detection
-    console.log('Starting technology detection...');
-    const builtwithTechnologies = await getBuiltWithTechnologies(domain);
-    const customTechnologies = detectTechnologiesCustom(html, headers);
-    
-    // Merge both technology detection results
-    const technologies = mergeTechnologies(builtwithTechnologies, customTechnologies);
-    
-    console.log(`Technology detection complete: ${builtwithTechnologies.length} via Builtwith, ${customTechnologies.length} via custom, ${technologies.length} total`);
+    // Analysis variables with fallbacks
+    let builtwithTechnologies: any[] = [];
+    let customTechnologies: any[] = [];
+    let technologies: any[] = [];
+    let isWordPress = false;
+    let wpVersion: string | undefined;
+    let theme: string | undefined;
+    let plugins = 0;
+    let hasSSL = false;
+    let hasCDN = false;
+    let imageOptimization: 'good' | 'needs-improvement' | 'poor' = 'needs-improvement';
+    let caching: 'enabled' | 'partial' | 'disabled' = 'disabled';
+    let performanceScore = 45;
+    let mobileScore = 35;
+    let usingRealData = false;
+    let recommendations: string[] = [];
 
-    // WordPress analysis
-    console.log('Starting WordPress analysis...');
-    const isWordPress = detectWordPress(html, headers);
-    const wpVersion = isWordPress ? extractWordPressVersion(html) : undefined;
-    const theme = isWordPress ? extractThemeName(html) : undefined;
-    const plugins = isWordPress ? countPlugins(html) : 0;
+    try {
+      // Technology detection with error handling
+      console.log('Starting technology detection...');
+      try {
+        builtwithTechnologies = await getBuiltWithTechnologies(domain);
+        console.log(`✅ BuiltWith API: ${builtwithTechnologies.length} technologies found`);
+      } catch (error) {
+        console.error('❌ BuiltWith API failed:', error instanceof Error ? error.message : 'Unknown error');
+        builtwithTechnologies = [];
+      }
 
-    console.log(`WordPress analysis: ${isWordPress ? 'detected' : 'not detected'}, version: ${wpVersion || 'unknown'}, theme: ${theme || 'unknown'}, plugins: ${plugins}`);
+      try {
+        customTechnologies = detectTechnologiesCustom(html, headers);
+        console.log(`✅ Custom detection: ${customTechnologies.length} technologies found`);
+      } catch (error) {
+        console.error('❌ Custom detection failed:', error instanceof Error ? error.message : 'Unknown error');
+        customTechnologies = [];
+      }
 
-    // Technical analysis
-    console.log('Starting technical analysis...');
-    const hasSSL = normalizedUrl.startsWith('https://');
-    const hasCDN = detectCDN(html, headers);
-    const imageOptimization = analyzeImageOptimization(html);
-    const caching = analyzeCaching(headers);
+      // Merge technologies with fallback
+      try {
+        technologies = mergeTechnologies(builtwithTechnologies, customTechnologies);
+        console.log(`✅ Technology merge complete: ${technologies.length} total`);
+      } catch (error) {
+        console.error('❌ Technology merge failed:', error instanceof Error ? error.message : 'Unknown error');
+        technologies = [...builtwithTechnologies, ...customTechnologies].slice(0, 10);
+      }
 
-    console.log(`Technical analysis: SSL: ${hasSSL}, CDN: ${hasCDN}, Images: ${imageOptimization}, Caching: ${caching}`);
+      // WordPress analysis with error handling
+      console.log('Starting WordPress analysis...');
+      try {
+        isWordPress = detectWordPress(html, headers);
+        wpVersion = isWordPress ? extractWordPressVersion(html) : undefined;
+        theme = isWordPress ? extractThemeName(html) : undefined;
+        plugins = isWordPress ? countPlugins(html) : 0;
+        console.log(`✅ WordPress analysis: ${isWordPress ? 'detected' : 'not detected'}, version: ${wpVersion || 'unknown'}, theme: ${theme || 'unknown'}, plugins: ${plugins}`);
+      } catch (error) {
+        console.error('❌ WordPress analysis failed:', error instanceof Error ? error.message : 'Unknown error');
+        isWordPress = false;
+        wpVersion = undefined;
+        theme = undefined;
+        plugins = 0;
+      }
 
-    // Get performance scores (real or estimated)
-    console.log('Starting performance analysis...');
-    const scoreData = await getPageSpeedScores(normalizedUrl);
-    let { performanceScore, mobileScore, usingRealData } = scoreData;
-    
-    // Fallback to estimated scoring if PageSpeed API failed
-    if (!usingRealData) {
-      console.log('Using estimated performance scores...');
-      const estimatedScores = calculateEstimatedScores({
-        hasSSL,
-        hasCDN,
-        caching,
-        imageOptimization,
-        plugins,
-        isWordPress
-      });
-      performanceScore = estimatedScores.performanceScore;
-      mobileScore = estimatedScores.mobileScore;
+      // Technical analysis with error handling
+      console.log('Starting technical analysis...');
+      try {
+        hasSSL = normalizedUrl.startsWith('https://');
+        hasCDN = detectCDN(html, headers);
+        imageOptimization = analyzeImageOptimization(html);
+        caching = analyzeCaching(headers);
+        console.log(`✅ Technical analysis: SSL: ${hasSSL}, CDN: ${hasCDN}, Images: ${imageOptimization}, Caching: ${caching}`);
+      } catch (error) {
+        console.error('❌ Technical analysis failed:', error instanceof Error ? error.message : 'Unknown error');
+        hasSSL = normalizedUrl.startsWith('https://');
+        hasCDN = false;
+        imageOptimization = 'needs-improvement';
+        caching = 'disabled';
+      }
+
+      // Performance analysis with error handling
+      console.log('Starting performance analysis...');
+      try {
+        const scoreData = await getPageSpeedScores(normalizedUrl);
+        performanceScore = scoreData.performanceScore;
+        mobileScore = scoreData.mobileScore;
+        usingRealData = scoreData.usingRealData;
+        console.log(`✅ Performance analysis: Desktop: ${performanceScore}, Mobile: ${mobileScore}, Real data: ${usingRealData}`);
+      } catch (error) {
+        console.error('❌ Performance analysis failed, using estimated scores:', error instanceof Error ? error.message : 'Unknown error');
+        try {
+          const estimatedScores = calculateEstimatedScores({
+            hasSSL,
+            hasCDN,
+            caching,
+            imageOptimization,
+            plugins,
+            isWordPress
+          });
+          performanceScore = estimatedScores.performanceScore;
+          mobileScore = estimatedScores.mobileScore;
+          usingRealData = false;
+          console.log(`✅ Estimated scores: Desktop: ${performanceScore}, Mobile: ${mobileScore}`);
+        } catch (estimateError) {
+          console.error('❌ Even estimated scoring failed:', estimateError instanceof Error ? estimateError.message : 'Unknown error');
+          performanceScore = 45;
+          mobileScore = 35;
+          usingRealData = false;
+        }
+      }
+
+      // Generate recommendations with error handling
+      console.log('Generating recommendations...');
+      try {
+        recommendations = generateRecommendations({
+          performanceScore,
+          hasCDN,
+          caching,
+          hasSSL,
+          isWordPress,
+          plugins,
+          imageOptimization
+        });
+        console.log(`✅ Generated ${recommendations.length} recommendations`);
+      } catch (error) {
+        console.error('❌ Recommendation generation failed:', error instanceof Error ? error.message : 'Unknown error');
+        recommendations = [
+          "Optimize images and enable compression",
+          "Implement caching to improve load times",
+          "Use a Content Delivery Network (CDN)",
+          "Ensure SSL is properly configured"
+        ];
+      }
+
+    } catch (analysisError) {
+      console.error('❌ Critical analysis error:', analysisError instanceof Error ? analysisError.message : 'Unknown error');
+      // Use fallback values already set above
     }
-
-    console.log(`Performance scores: Desktop: ${performanceScore}, Mobile: ${mobileScore}, Real data: ${usingRealData}`);
-
-    // Generate recommendations
-    console.log('Generating recommendations...');
-    const recommendations = generateRecommendations({
-      performanceScore,
-      hasCDN,
-      caching,
-      hasSSL,
-      isWordPress,
-      plugins,
-      imageOptimization
-    });
 
     const result: AnalysisResult = {
       url: normalizedUrl,
