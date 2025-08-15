@@ -1,5 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-
 export interface LeadData {
   name: string;
   email: string;
@@ -32,83 +30,74 @@ export interface AnalysisReportData {
   riskLevel?: 'critical' | 'high' | 'medium' | 'low';
 }
 
+async function apiRequest(endpoint: string, options: RequestInit = {}) {
+  const response = await fetch(endpoint, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || `HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+
 export const leadService = {
   async createLead(leadData: LeadData) {
     try {
-      console.log('Attempting to create lead with data:', leadData);
+      console.log('Creating lead with data:', leadData);
       
-      // Check current auth state
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('Current auth session:', session);
-      console.log('Session error:', sessionError);
-      
-      const insertData = {
-        name: leadData.name,
-        email: leadData.email,
-        company: null,
-        website_url: leadData.websiteUrl
-      };
-      
-      console.log('Insert data:', insertData);
-      
-      const { data, error } = await supabase
-        .from('leads')
-        .insert(insertData)
-        .select()
-        .single();
+      const lead = await apiRequest('/api/leads', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: leadData.name,
+          email: leadData.email,
+          company: leadData.company || null,
+          websiteUrl: leadData.websiteUrl
+        }),
+      });
 
-      console.log('Supabase response:', { data, error });
-
-      if (error) {
-        console.error('Error creating lead:', error);
-        throw new Error(`Failed to create lead: ${error.message}`);
-      }
-
-      if (!data) {
-        throw new Error('No data returned from lead creation');
-      }
-
-      return data;
+      console.log('Lead created successfully:', lead);
+      return lead;
     } catch (error) {
-      console.error('Lead service error:', error);
+      console.error('Lead creation error:', error);
       throw error;
     }
   },
 
   async createAnalysisReport(reportData: AnalysisReportData) {
     try {
-      const { data, error } = await supabase
-        .from('analysis_reports')
-        .insert({
-          lead_id: reportData.leadId,
+      const report = await apiRequest('/api/analysis-reports', {
+        method: 'POST',
+        body: JSON.stringify({
+          leadId: reportData.leadId,
           url: reportData.url,
-          performance_score: reportData.performanceScore,
-          mobile_score: reportData.mobileScore,
-          is_wordpress: reportData.isWordpress || false,
-          wp_version: reportData.wpVersion,
+          performanceScore: reportData.performanceScore,
+          mobileScore: reportData.mobileScore,
+          isWordpress: reportData.isWordpress || false,
+          wpVersion: reportData.wpVersion,
           theme: reportData.theme,
           plugins: reportData.plugins,
-          has_ssl: reportData.hasSSL || false,
-          has_cdn: reportData.hasCDN || false,
-          image_optimization: reportData.imageOptimization,
+          hasSSL: reportData.hasSSL || false,
+          hasCDN: reportData.hasCDN || false,
+          imageOptimization: reportData.imageOptimization,
           caching: reportData.caching,
           recommendations: reportData.recommendations,
           technologies: reportData.technologies,
-          data_source: reportData.dataSource,
+          dataSource: reportData.dataSource,
           confidence: reportData.confidence,
-          risk_level: reportData.riskLevel
-        })
-        .select()
-        .single();
+          riskLevel: reportData.riskLevel
+        }),
+      });
 
-      if (error) {
-        console.error('Error creating analysis report:', error);
-        throw new Error('Failed to create analysis report');
-      }
-
-      return data;
+      return report;
     } catch (error) {
-      console.error('Analysis report service error:', error);
+      console.error('Analysis report creation error:', error);
       throw error;
     }
   },

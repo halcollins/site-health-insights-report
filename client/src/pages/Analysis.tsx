@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import AnalysisResults from "@/components/AnalysisResults";
@@ -34,26 +34,24 @@ interface AnalysisResult {
 }
 
 const Analysis = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const [location, setLocation] = useLocation();
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
   useEffect(() => {
-    // Get analysis result from location state or localStorage
-    const analysisResult = location.state?.result || 
-      JSON.parse(localStorage.getItem('analysisResult') || 'null');
+    // Get analysis result from localStorage
+    const analysisResult = JSON.parse(localStorage.getItem('analysisResult') || 'null');
     
     if (analysisResult) {
       setResult(analysisResult);
     } else {
       // If no result, redirect to home
-      navigate('/');
+      setLocation('/');
     }
-  }, [location.state, navigate]);
+  }, [setLocation]);
 
   const handleNewAnalysis = () => {
     localStorage.removeItem('analysisResult');
-    navigate('/');
+    setLocation('/');
   };
 
   if (!result) {

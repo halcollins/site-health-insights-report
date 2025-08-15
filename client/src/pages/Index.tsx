@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import Header from "@/components/Header";
 import LeadCaptureForm from "@/components/LeadCaptureForm";
 import heroImage from "@/assets/hero-bg.jpg";
@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const navigate = useNavigate();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
 
   const performAnalysis = async (leadData: LeadData) => {
@@ -66,7 +66,7 @@ const Index = () => {
       // Store result and navigate
       localStorage.setItem('analysisResult', JSON.stringify(enhancedResult));
       setIsAnalyzing(false);
-      navigate('/analysis', { state: { result: enhancedResult } });
+      setLocation('/analysis');
     } catch (error) {
       setIsAnalyzing(false);
       toast({
