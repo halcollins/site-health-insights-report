@@ -128,7 +128,7 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
             <div className="flex space-x-2">
               <Button variant="outline" className="flex items-center space-x-2">
                 <Download className="w-4 h-4" />
-                <span>Download PDF</span>
+                <span>Coming Soon - Download PDF</span>
               </Button>
               <Button onClick={onNewAnalysis} variant="outline">
                 Analyze Another Site
@@ -342,7 +342,7 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
         <CardContent>
           <ul className="space-y-4">
             {result.recommendations.map((rec, index) => (
-              <li key={index} className="flex items-start space-x-3 p-3 border border-orange-200 rounded-lg bg-orange-50">
+              <li key={index} className="flex items-start space-x-3 p-3 border border-orange-200 rounded-lg bg-orange-90">
                 <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
                 <div>
                   <span className="text-foreground font-medium">{rec}</span>
@@ -357,7 +357,7 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
       </Card>
 
       {/* CTA Section */}
-      <Card className="bg-gradient-to-r from-destructive/10 to-orange-100 border-orange-200">
+      <Card className="bg-card/80 from-destructive/10 to-orange-100 border-orange-200">
         <CardContent className="p-8 text-center space-y-6">
           <h3 className="text-2xl font-bold text-foreground">
             Don't Let These Issues Cost You Business
