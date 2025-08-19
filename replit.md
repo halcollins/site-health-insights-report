@@ -10,9 +10,17 @@ A professional website analysis tool that generates leads and provides comprehen
 - **Database**: PostgreSQL with Drizzle ORM (migrated from Supabase)
 - **Analysis Engine**: Server-side website analysis with performance metrics, WordPress detection, and security checks
 
-## Recent Changes (December 2024)
+## Recent Changes (August 2025)
 
-### Migration from Lovable to Replit
+### Security Enhancement Update
+- **Comprehensive Security Scanning**: Added WordPress security scanner and general web security tests
+- **Penetration Testing Features**: Implemented WPScan-like functionality and OWASP vulnerability detection
+- **Enhanced Database Schema**: Added security_findings table and security-related fields to analysis_reports
+- **Advanced Security Analysis**: WordPress version vulnerability detection, security header analysis, SSL/TLS testing
+- **Vulnerability Detection**: Directory traversal testing, information disclosure checks, file exposure detection
+- **Frontend Security Display**: Comprehensive security assessment UI with detailed findings and remediation recommendations
+
+### Migration from Lovable to Replit (December 2024)
 - **Database Migration**: Migrated from Supabase to Replit PostgreSQL using Drizzle ORM
 - **Schema**: Created leads and analysis_reports tables with proper relations
 - **API Migration**: Ported Supabase Edge Functions to Express.js server routes
@@ -22,19 +30,22 @@ A professional website analysis tool that generates leads and provides comprehen
 
 ### Database Schema
 - **Leads table**: Stores contact information and website URLs
-- **Analysis Reports table**: Stores detailed website analysis results with foreign key to leads
-- **Enums**: Risk levels, data sources, confidence levels, optimization statuses
+- **Analysis Reports table**: Enhanced with security findings, missing headers, and overall security scores
+- **Security Findings table**: Detailed vulnerability tracking with severity levels, CVE IDs, and CVSS scores
+- **Enums**: Risk levels, data sources, confidence levels, vulnerability types, severity levels
 
 ### Key Features
 - Lead capture with contact form
 - Real-time website analysis
 - Performance score calculation
 - WordPress detection and analysis
-- Security assessment (SSL, CDN detection)
-- Risk level calculation
+- **Comprehensive Security Scanning**: WordPress vulnerability detection, security header analysis, SSL/TLS testing
+- **Penetration Testing**: Directory traversal, information disclosure, file exposure checks
+- **Vulnerability Database**: CVE tracking, CVSS scoring, detailed remediation recommendations
+- Risk level calculation with security-adjusted scoring
 - Technology stack detection
 - Mobile performance analysis
-- Recommendations generation
+- Enhanced recommendations with security focus
 
 ## User Preferences
 - Technical implementation preferred over mock data
