@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertLeadSchema, insertAnalysisReportSchema } from "@shared/schema";
+import { WordPressSecurityScanner } from "./services/wordpressSecurity";
+import { WebSecurityScanner } from "./services/webSecurity";
 
 // Website analysis service
 interface AnalysisResult {
@@ -18,9 +20,24 @@ interface AnalysisResult {
   caching: 'enabled' | 'partial' | 'disabled';
   recommendations: string[];
   technologies: Technology[];
+  securityFindings: SecurityFinding[];
+  wpSecurityIssues: any[];
+  missingSecurityHeaders: string[];
+  overallSecurityScore: number;
   dataSource: 'real' | 'estimated';
   confidence: 'high' | 'medium' | 'low';
   analysisTimestamp: string;
+}
+
+interface SecurityFinding {
+  type: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  evidence?: string;
+  recommendation: string;
+  cvssScore?: number;
+  cveId?: string;
 }
 
 interface Technology {
@@ -116,6 +133,31 @@ async function analyzeWebsite(url: string): Promise<AnalysisResult> {
     const hasSSL = normalizedUrl.startsWith('https://');
     const hasCDN = html.toLowerCase().includes('cloudflare') || html.toLowerCase().includes('cloudfront');
     
+    // Initialize security scanners
+    const wpScanner = new WordPressSecurityScanner();
+    const webScanner = new WebSecurityScanner();
+    
+    // Perform security scans
+    const [wpSecurityResult, webSecurityResult] = await Promise.all([
+      wpScanner.scanWordPressSecurity(normalizedUrl, html, headers),
+      webScanner.performSecurityScan(normalizedUrl, html, headers)
+    ]);
+    
+    // Combine security findings
+    const allSecurityFindings: SecurityFinding[] = [
+      ...webSecurityResult.securityIssues,
+      ...wpSecurityResult.securityIssues.map(issue => ({
+        type: issue.type,
+        severity: issue.severity,
+        title: issue.title,
+        description: issue.description,
+        evidence: issue.evidence,
+        recommendation: issue.recommendation,
+        cvssScore: issue.cvssScore,
+        cveId: issue.cveId
+      }))
+    ];
+    
     // Generate estimated scores
     let performanceScore = 65;
     let mobileScore = 55;
@@ -124,7 +166,31 @@ async function analyzeWebsite(url: string): Promise<AnalysisResult> {
     if (hasCDN) performanceScore += 10;
     if (isWordPress) performanceScore -= 8;
     
+    // Adjust performance based on security findings
+    const criticalFindings = allSecurityFindings.filter(f => f.severity === 'critical').length;
+    const highFindings = allSecurityFindings.filter(f => f.severity === 'high').length;
+    performanceScore -= (criticalFindings * 10 + highFindings * 5);
+    
     mobileScore = Math.max(20, performanceScore - Math.floor(Math.random() * 15 + 5));
+    
+    // Enhanced recommendations based on security findings
+    const recommendations = [
+      'Improve page loading speed by optimizing images',
+      'Implement a Content Delivery Network (CDN)',
+      'Enable browser caching for better performance',
+      'Optimize CSS and JavaScript files'
+    ];
+    
+    // Add security-specific recommendations
+    if (!hasSSL) {
+      recommendations.unshift('Install SSL certificate for secure connections');
+    }
+    if (webSecurityResult.missingSecurityHeaders.length > 0) {
+      recommendations.push('Implement missing security headers for better protection');
+    }
+    if (isWordPress && wpSecurityResult.securityIssues.length > 0) {
+      recommendations.push('Address WordPress security vulnerabilities');
+    }
     
     const result: AnalysisResult = {
       url: normalizedUrl,
@@ -135,16 +201,15 @@ async function analyzeWebsite(url: string): Promise<AnalysisResult> {
       hasCDN,
       imageOptimization: 'needs-improvement' as const,
       caching: hasCDN ? 'partial' as const : 'disabled' as const,
-      recommendations: [
-        'Improve page loading speed by optimizing images',
-        'Implement a Content Delivery Network (CDN)',
-        'Enable browser caching for better performance',
-        'Optimize CSS and JavaScript files'
-      ],
+      recommendations: recommendations.slice(0, 8), // Limit recommendations
       technologies: [
         { name: 'HTTPS', confidence: hasSSL ? 100 : 0, category: 'Security' },
         ...(isWordPress ? [{ name: 'WordPress', confidence: 90, category: 'CMS' }] : [])
       ],
+      securityFindings: allSecurityFindings,
+      wpSecurityIssues: wpSecurityResult.securityIssues,
+      missingSecurityHeaders: webSecurityResult.missingSecurityHeaders,
+      overallSecurityScore: webSecurityResult.securityScore,
       dataSource: 'estimated' as const,
       confidence: 'medium' as const,
       analysisTimestamp: new Date().toISOString()

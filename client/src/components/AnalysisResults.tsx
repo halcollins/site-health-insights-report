@@ -1,7 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, AlertTriangle, XCircle, Globe, Shield, Zap, Image, Server, TrendingUp, Cpu, FileText, Download } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, Globe, Shield, Zap, Image, Server, TrendingUp, Cpu, FileText, Download, Lock, Unlock, Eye, EyeOff } from "lucide-react";
+
+interface SecurityFinding {
+  type: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  evidence?: string;
+  recommendation: string;
+  cvssScore?: number;
+  cveId?: string;
+}
 
 interface AnalysisResult {
   url: string;
@@ -22,6 +33,10 @@ interface AnalysisResult {
     version?: string;
     category: string;
   }>;
+  securityFindings?: SecurityFinding[];
+  wpSecurityIssues?: any[];
+  missingSecurityHeaders?: string[];
+  overallSecurityScore?: number;
   dataSource: 'real' | 'estimated';
   confidence: 'high' | 'medium' | 'low';
   analysisTimestamp: string;
@@ -202,6 +217,136 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
         )}
       </div>
 
+      {/* Comprehensive Security Analysis */}
+      {(result.securityFindings && result.securityFindings.length > 0) || (result.overallSecurityScore !== undefined) || (result.missingSecurityHeaders && result.missingSecurityHeaders.length > 0) ? (
+        <Card className="bg-card/50 backdrop-blur-sm border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Shield className="w-5 h-5 text-primary" />
+              <span>Security Assessment</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Overall Security Score */}
+            {result.overallSecurityScore !== undefined && (
+              <div className="flex items-center justify-between p-4 bg-background/50 rounded-lg border">
+                <span className="text-foreground font-medium">Overall Security Score</span>
+                <div className="flex items-center space-x-2">
+                  {getScoreIcon(result.overallSecurityScore)}
+                  <span className={`font-bold text-lg ${getScoreColor(result.overallSecurityScore)}`}>
+                    {result.overallSecurityScore}/100
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Security Findings */}
+            {result.securityFindings && result.securityFindings.length > 0 && (
+              <div className="space-y-4">
+                <h4 className="font-semibold text-foreground text-sm">Security Vulnerabilities Found</h4>
+                <div className="space-y-3">
+                  {result.securityFindings.slice(0, 8).map((finding, index) => (
+                    <div 
+                      key={index} 
+                      className={`p-4 rounded-lg border-l-4 ${
+                        finding.severity === 'critical' ? 'bg-red-50 border-l-red-500 border border-red-200' :
+                        finding.severity === 'high' ? 'bg-orange-50 border-l-orange-500 border border-orange-200' :
+                        finding.severity === 'medium' ? 'bg-yellow-50 border-l-yellow-500 border border-yellow-200' :
+                        'bg-blue-50 border-l-blue-500 border border-blue-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <Badge 
+                              variant="outline" 
+                              className={
+                                finding.severity === 'critical' ? 'border-red-500 text-red-700 bg-red-100' :
+                                finding.severity === 'high' ? 'border-orange-500 text-orange-700 bg-orange-100' :
+                                finding.severity === 'medium' ? 'border-yellow-500 text-yellow-700 bg-yellow-100' :
+                                'border-blue-500 text-blue-700 bg-blue-100'
+                              }
+                            >
+                              {finding.severity.toUpperCase()}
+                            </Badge>
+                            {finding.cvssScore && (
+                              <Badge variant="outline" className="border-muted text-muted-foreground">
+                                CVSS {finding.cvssScore}
+                              </Badge>
+                            )}
+                            {finding.cveId && (
+                              <Badge variant="outline" className="border-muted text-muted-foreground">
+                                {finding.cveId}
+                              </Badge>
+                            )}
+                          </div>
+                          <h5 className="font-medium text-foreground mb-1">{finding.title}</h5>
+                          <p className="text-sm text-muted-foreground mb-2">{finding.description}</p>
+                          {finding.evidence && (
+                            <p className="text-xs text-muted-foreground mb-2 font-mono bg-background/50 p-2 rounded">
+                              Evidence: {finding.evidence}
+                            </p>
+                          )}
+                          <p className="text-sm text-foreground font-medium">
+                            <span className="text-muted-foreground">Fix:</span> {finding.recommendation}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {result.securityFindings.length > 8 && (
+                    <div className="text-center p-3 bg-background/50 rounded-lg border">
+                      <p className="text-sm text-muted-foreground">
+                        And {result.securityFindings.length - 8} more security issues found...
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Missing Security Headers */}
+            {result.missingSecurityHeaders && result.missingSecurityHeaders.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="font-semibold text-foreground text-sm">Missing Security Headers</h4>
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {result.missingSecurityHeaders.map((header, index) => (
+                      <Badge key={index} variant="outline" className="border-yellow-500 text-yellow-700 bg-yellow-100">
+                        {header}
+                      </Badge>
+                    ))}
+                  </div>
+                  <p className="text-sm text-yellow-700">
+                    Missing security headers leave your website vulnerable to various attacks including XSS, clickjacking, and data injection.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* WordPress Security Issues */}
+            {result.isWordPress && result.wpSecurityIssues && result.wpSecurityIssues.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="font-semibold text-foreground text-sm">WordPress Security Issues</h4>
+                <div className="space-y-2">
+                  {result.wpSecurityIssues.slice(0, 5).map((issue, index) => (
+                    <div key={index} className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Badge variant="outline" className="border-orange-500 text-orange-700">
+                          {issue.severity?.toUpperCase() || 'MEDIUM'}
+                        </Badge>
+                        <span className="text-sm font-medium text-foreground">{issue.title}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{issue.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* WordPress Detection */}
       <Card className="bg-card/50 backdrop-blur-sm border-border">
         <CardHeader>
@@ -288,22 +433,52 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Shield className="w-5 h-5 text-primary" />
-              <span>Security Vulnerabilities</span>
+              <span>Security Summary</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {result.overallSecurityScore !== undefined && (
+              <div className="flex items-center justify-between">
+                <span className="text-foreground">Security Score</span>
+                <div className="flex items-center space-x-2">
+                  {getScoreIcon(result.overallSecurityScore)}
+                  <span className={`font-bold ${getScoreColor(result.overallSecurityScore)}`}>
+                    {result.overallSecurityScore}/100
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-foreground">SSL Certificate</span>
-              {getStatusBadge(result.hasSSL)}
+              <div className="flex items-center space-x-1">
+                {result.hasSSL ? <Lock className="w-4 h-4 text-success" /> : <Unlock className="w-4 h-4 text-destructive" />}
+                {getStatusBadge(result.hasSSL)}
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-foreground">CDN Protection</span>
               {getStatusBadge(result.hasCDN)}
             </div>
-            {!result.hasSSL && (
+            {result.securityFindings && result.securityFindings.length > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-foreground">Security Issues Found</span>
+                <Badge variant="outline" className="border-destructive text-destructive">
+                  {result.securityFindings.length} issues
+                </Badge>
+              </div>
+            )}
+            {result.missingSecurityHeaders && result.missingSecurityHeaders.length > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-foreground">Missing Security Headers</span>
+                <Badge variant="outline" className="border-warning text-warning">
+                  {result.missingSecurityHeaders.length} headers
+                </Badge>
+              </div>
+            )}
+            {(!result.hasSSL || (result.securityFindings && result.securityFindings.some(f => f.severity === 'critical' || f.severity === 'high'))) && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-700">
-                  🚨 Missing SSL exposes customer data and hurts search rankings
+                  Critical security vulnerabilities detected that require immediate attention
                 </p>
               </div>
             )}
