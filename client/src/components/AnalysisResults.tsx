@@ -152,7 +152,6 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           </div>
         </CardHeader>
       </Card>
-
       {/* Data Quality & Technologies */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Data Quality */}
@@ -216,7 +215,6 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           </Card>
         )}
       </div>
-
       {/* Comprehensive Security Analysis */}
       {(result.securityFindings && result.securityFindings.length > 0) || (result.overallSecurityScore !== undefined) || (result.missingSecurityHeaders && result.missingSecurityHeaders.length > 0) ? (
         <Card className="bg-card/50 backdrop-blur-sm border-border">
@@ -330,7 +328,7 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
                 <h4 className="font-semibold text-foreground text-sm">WordPress Security Issues</h4>
                 <div className="space-y-2">
                   {result.wpSecurityIssues.slice(0, 5).map((issue, index) => (
-                    <div key={index} className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div key={index} className="p-3 border border-orange-200 rounded-lg bg-[#363636]">
                       <div className="flex items-center space-x-2 mb-1">
                         <Badge variant="outline" className="border-orange-500 text-orange-700">
                           {issue.severity?.toUpperCase() || 'MEDIUM'}
@@ -346,7 +344,6 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           </CardContent>
         </Card>
       ) : null}
-
       {/* WordPress Detection */}
       <Card className="bg-card/50 backdrop-blur-sm border-border">
         <CardHeader>
@@ -390,7 +387,6 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           )}
         </CardContent>
       </Card>
-
       {/* Performance Scores */}
       <div className="grid md:grid-cols-2 gap-6">
         <Card className="bg-card/50 backdrop-blur-sm border-border">
@@ -485,7 +481,6 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           </CardContent>
         </Card>
       </div>
-
       {/* Technical Details */}
       <Card className="bg-card/50 backdrop-blur-sm border-border">
         <CardHeader>
@@ -505,7 +500,6 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           </div>
         </CardContent>
       </Card>
-
       {/* Critical Actions Required */}
       <Card className="bg-card/50 backdrop-blur-sm border-border">
         <CardHeader>
@@ -530,7 +524,6 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           </ul>
         </CardContent>
       </Card>
-
       {/* CTA Section */}
       <Card className="bg-card/80 from-destructive/10 to-orange-100 border-orange-200">
         <CardContent className="p-8 text-center space-y-6">
