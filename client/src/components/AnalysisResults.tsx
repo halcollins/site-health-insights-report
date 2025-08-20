@@ -246,12 +246,7 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
                   {result.securityFindings.slice(0, 8).map((finding, index) => (
                     <div 
                       key={index} 
-                      className={`p-4 rounded-lg border-l-4 ${
-                        finding.severity === 'critical' ? 'bg-red-50 border-l-red-500 border border-red-200' :
-                        finding.severity === 'high' ? 'bg-orange-50 border-l-orange-500 border border-orange-200' :
-                        finding.severity === 'medium' ? 'bg-yellow-50 border-l-yellow-500 border border-yellow-200' :
-                        'bg-blue-50 border-l-blue-500 border border-blue-200'
-                      }`}
+                      className="p-4 rounded-lg border border-orange-200 bg-[#363636]"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
