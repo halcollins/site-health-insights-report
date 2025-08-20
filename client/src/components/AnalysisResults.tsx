@@ -287,13 +287,7 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
                       </div>
                     </div>
                   ))}
-                  {result.securityFindings.length > 8 && (
-                    <div className="text-center p-3 bg-background/50 rounded-lg border">
-                      <p className="text-sm text-muted-foreground">
-                        And {result.securityFindings.length - 8} more security issues found...
-                      </p>
-                    </div>
-                  )}
+
                 </div>
               </div>
             )}
