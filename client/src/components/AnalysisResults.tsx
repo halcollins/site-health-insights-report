@@ -243,7 +243,7 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
               <div className="space-y-4">
                 <h4 className="font-semibold text-foreground text-sm">Security Vulnerabilities Found</h4>
                 <div className="space-y-3">
-                  {result.securityFindings.slice(0, 8).map((finding, index) => (
+                  {result.securityFindings.map((finding, index) => (
                     <div 
                       key={index} 
                       className="p-4 rounded-lg border border-orange-200 bg-[#363636]"
@@ -316,7 +316,7 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
               <div className="space-y-3">
                 <h4 className="font-semibold text-foreground text-sm">WordPress Security Issues</h4>
                 <div className="space-y-2">
-                  {result.wpSecurityIssues.slice(0, 5).map((issue, index) => (
+                  {result.wpSecurityIssues.map((issue, index) => (
                     <div key={index} className="p-3 border border-orange-200 rounded-lg bg-[#363636]">
                       <div className="flex items-center space-x-2 mb-1">
                         <Badge variant="outline" className="border-orange-500 text-orange-700">
