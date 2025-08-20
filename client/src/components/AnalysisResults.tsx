@@ -525,9 +525,7 @@ const AnalysisResults = ({ result, onNewAnalysis }: AnalysisResultsProps) => {
           </p>
           <div className="bg-card/80 border border-orange-200 rounded-lg p-6 max-w-md mx-auto">
             <h4 className="font-semibold text-foreground mb-2">Free Security Consultation</h4>
-            <p className="text-sm text-muted-foreground mb-4">
-              Get a personalized action plan to fix these critical issues
-            </p>
+            <p className="text-sm text-muted-foreground mb-4">Get a personalized action plan to fix these critical issues by webTECH Consulting. Call (918) 633-6263 or click the links below to contact webTECH today. </p>
             <div className="flex flex-col gap-3">
               <Button size="lg" className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
                 <a href="mailto:hal.webtech@gmail.com?subject=URGENT: Security Issues Found - Schedule Consultation">
